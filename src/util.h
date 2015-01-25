@@ -8,6 +8,16 @@
 #ifndef SRC_UTIL_H_
 #define SRC_UTIL_H_
 
+#include <botan/botan.h>
+#include <botan/keccak.h>
+#include <botan/aes.h>
+
+#include <sstream>
+#include <iomanip>
+#include <cstdint>
+#include <iostream>
+#include <string>
+
 uint64_t filesize(std::istream& ifile){
 	auto cur_pos = ifile.tellg();
 	ifile.seekg(0, ifile.end);
@@ -29,6 +39,16 @@ std::string encrypt(const std::string& data, Botan::SymmetricKey key, Botan::Ini
 	pipe.process_msg(data);
 
 	return pipe.read_all_as_string(0);
+}
+
+std::string to_hex(const std::string& s)
+{
+    std::ostringstream ret;
+
+    for (std::string::size_type i = 0; i < s.length(); ++i)
+        ret << std::hex << std::setfill('0') << std::setw(2) << std::uppercase << (int)s[i];
+
+    return ret.str();
 }
 
 #endif /* SRC_UTIL_H_ */

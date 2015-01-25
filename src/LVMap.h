@@ -15,13 +15,23 @@
 #ifndef SRC_LVMAP_H_
 #define SRC_LVMAP_H_
 
+#include "crypto/RsyncChecksum.h"
+#include <boost/optional.hpp>
+#include <botan/symkey.h>
+#include <botan/rng.h>
+#include <botan/botan.h>
 #include <string>
 #include <map>
+#include <array>
 #include <unordered_map>
+#include <cstdint>
+#include <iostream>
+#include <memory>
 
 constexpr size_t LV_MAXCHUNKSIZE = 4096;
 constexpr size_t LV_MINCHUNKSIZE = 256;
 constexpr size_t AES_BLOCKSIZE = 16;
+constexpr size_t AES_KEYSIZE = 32;
 constexpr size_t SHASH_LENGTH = 28;
 
 class LVMap {
@@ -45,19 +55,27 @@ class LVMap {
 	Chunk processChunk(const std::string& binchunk){Botan::AutoSeeded_RNG rng; auto iv = rng.random_vec(AES_BLOCKSIZE); return processChunk(binchunk, iv);};
 	Chunk processChunk(const std::string& binchunk, const Botan::InitializationVector& iv);
 
-	decltype(hashed_chunks)::iterator match_block(const decltype(hashed_chunks)& chunkset, const std::string& chunkbuf, RsyncChecksum checksum);
+	boost::optional<decltype(hashed_chunks)::iterator> match_block(const decltype(hashed_chunks)& chunkset, const std::string& chunkbuf, RsyncChecksum checksum);
 
 	std::array<char, SHASH_LENGTH> compute_shash(const char* data, size_t length) const;
 	std::pair<offset_t, offset_t> find_empty_block(offset_t from, offset_t minsize);
 public:
+	LVMap();
 	LVMap(const Botan::SymmetricKey& key);
 	virtual ~LVMap();
 
-	void resize(uint64_t new_size);
+	void setKey(const Botan::SymmetricKey& key){this->key = key;};
+	void setSize(uint64_t new_size);
+
 	void clear();
 
-	void create(std::istream& lvfile);
-	LVMap update(std::istream& lvfile);
+	void create(std::istream& datafile);
+	LVMap update(std::istream& datafile);
+
+	void from_file(std::istream& lvfile);
+	void to_file(std::ostream& lvfile);
+
+	void print_debug();
 };
 
 #endif /* SRC_LVMAP_H_ */
