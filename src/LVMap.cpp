@@ -73,9 +73,10 @@ boost::optional<decltype(LVMap::hashed_chunks)::iterator> LVMap::match_block(con
 	auto eqhash_blocks = hashed_chunks.equal_range(checksum);
 	if(eqhash_blocks != std::make_pair(hashed_chunks.end(), hashed_chunks.end())){
 		for(auto eqhash_block = eqhash_blocks.first; eqhash_block != eqhash_blocks.second; eqhash_block++){
-			std::cout << "SHA-3-1: " << to_hex(std::string(eqhash_block->second->meta.strong_hash.data(), 28)) << std::endl;
-			std::cout << "SHA-3-2: " << to_hex(std::string(compute_shash(chunkbuf.data(), chunkbuf.length()).data(), 28)) << std::endl;
+			//std::cout << "SHA-3-1: " << to_hex(std::string(eqhash_block->second->meta.strong_hash.data(), 28)) << std::endl;
+			//std::cout << "SHA-3-2: " << to_hex(std::string(compute_shash(chunkbuf.data(), chunkbuf.length()).data(), 28)) << std::endl;
 			if(compute_shash(chunkbuf.data(), chunkbuf.length()) == eqhash_block->second->meta.strong_hash){
+				std::cout << "Matched block: " << to_hex(checksum) << std::endl;
 				return eqhash_block;
 			}
 		}
@@ -87,7 +88,7 @@ std::pair<LVMap::offset_t, LVMap::offset_t> LVMap::find_empty_block(offset_t fro
 	while(from < size){
 		auto it = offset_chunks.lower_bound(from);
 		if(it == offset_chunks.end()){
-			if(size-from > minsize){
+			if(size-from >= minsize){
 				return {from, size};
 			}else break;	// as we reached eof.
 		}else if(it->first-from < minsize){
@@ -155,6 +156,7 @@ LVMap LVMap::update(std::istream& datafile) {
 					}
 				} while(datafile.tellg() != empty_block.second);
 			}
+			empty_block = upd.find_empty_block(offset+chunksize, chunksize);
 		}
 	}
 
@@ -185,7 +187,7 @@ void LVMap::print_debug(){
 	int i = 0;
 	for(auto chunk : offset_chunks){
 		std::cout << "#: " << ++i << " L: " << chunk.second->meta.length << std::endl;
-		std::cout << "Rsync: " << chunk.second->weak_hash << std::endl;
+		std::cout << "Rsync: " << to_hex(chunk.second->weak_hash) << std::endl;
 		std::cout << "SHA-3: " << to_hex(chunk.second->meta.strong_hash.data()) << std::endl;
 		std::cout << "IV: " << to_hex(chunk.second->meta.iv.data()) << std::endl << std::endl;
 	}

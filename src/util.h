@@ -46,9 +46,16 @@ std::string to_hex(const std::string& s)
     std::ostringstream ret;
 
     for (std::string::size_type i = 0; i < s.length(); ++i)
-        ret << std::hex << std::setfill('0') << std::setw(2) << std::uppercase << (int)s[i];
+        ret << std::hex << std::setfill('0') << std::setw(2) << (int)s[i];
 
     return ret.str();
+}
+
+std::string to_hex(const uint32_t& s){
+	std::ostringstream ret;
+	ret << "0x" << std::hex << std::setfill('0') << std::setw(8) << s;
+
+	return ret.str();
 }
 
 #endif /* SRC_UTIL_H_ */
