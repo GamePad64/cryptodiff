@@ -14,10 +14,6 @@
 #include "RsyncChecksum.h"
 #include <iostream>
 
-RsyncChecksum::operator weakhash_t() const {
-	return (s1 & 0xffff) | (s2 << 16);
-}
-
 weakhash_t RsyncChecksum::compute(const char* source, size_t len) {
 	s1 = 0; s2 = 0; count = 0;
 	for(auto i = len; i--; i != 0){
@@ -26,11 +22,5 @@ weakhash_t RsyncChecksum::compute(const char* source, size_t len) {
 		source++;
 	}
 	count += len;
-	return static_cast<uint32_t>(*this);
-}
-
-weakhash_t RsyncChecksum::roll(uint8_t out, uint8_t in) {
-	s1 -= (out+char_offset); s1 += (in+char_offset);
-	s2 -= count*(out+char_offset); s2 += s1;
 	return static_cast<uint32_t>(*this);
 }

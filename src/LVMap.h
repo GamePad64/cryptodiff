@@ -55,7 +55,7 @@ class LVMap {
 	Chunk processChunk(const std::string& binchunk){Botan::AutoSeeded_RNG rng; auto iv = rng.random_vec(AES_BLOCKSIZE); return processChunk(binchunk, iv);};
 	Chunk processChunk(const std::string& binchunk, const Botan::InitializationVector& iv);
 
-	boost::optional<decltype(hashed_chunks)::iterator> match_block(const decltype(hashed_chunks)& chunkset, const std::string& chunkbuf, RsyncChecksum checksum);
+	decltype(hashed_chunks)::iterator match_block(decltype(hashed_chunks)& chunkset, const std::string& chunkbuf, RsyncChecksum checksum);
 
 	std::array<char, SHASH_LENGTH> compute_shash(const char* data, size_t length) const;
 	std::pair<offset_t, offset_t> find_empty_block(offset_t from, offset_t minsize);
