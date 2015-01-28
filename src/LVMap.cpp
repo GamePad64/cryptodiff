@@ -76,7 +76,7 @@ boost::optional<decltype(LVMap::hashed_chunks)::iterator> LVMap::match_block(con
 			//std::cout << "SHA-3-1: " << to_hex(std::string(eqhash_block->second->meta.strong_hash.data(), 28)) << std::endl;
 			//std::cout << "SHA-3-2: " << to_hex(std::string(compute_shash(chunkbuf.data(), chunkbuf.length()).data(), 28)) << std::endl;
 			if(compute_shash(chunkbuf.data(), chunkbuf.length()) == eqhash_block->second->meta.strong_hash){
-				std::cout << "Matched block: " << to_hex(checksum) << std::endl;
+				std::cout << "Matched block: " << to_hex(checksum) << " size=" << chunkbuf.size() << std::endl;
 				return eqhash_block;
 			}
 		}
@@ -147,7 +147,7 @@ LVMap LVMap::update(std::istream& datafile) {
 					reading_queue.pop_front();
 					offset++;
 
-					matched_it = match_block(chunks_left, chunkbuf, checksum);
+					matched_it = match_block(chunks_left, std::string(reading_queue.begin(), reading_queue.end()), checksum);
 					if(matched_it != boost::optional<decltype(hashed_chunks)::iterator>()){
 						upd.offset_chunks.insert(std::make_pair(offset, matched_it.get()->second));
 						upd.hashed_chunks.insert(std::make_pair(checksum, matched_it.get()->second));
@@ -158,6 +158,13 @@ LVMap LVMap::update(std::istream& datafile) {
 			}
 			empty_block = upd.find_empty_block(offset+chunksize, chunksize);
 		}
+	}
+
+	std::pair<offset_t, offset_t> empty_block;
+	empty_block = upd.find_empty_block(0, 1);
+	while(empty_block != std::pair<offset_t, offset_t>(0,0)){
+		std::cout << "Unmatched block: off=" << empty_block.first << " size=" << empty_block.second-empty_block.first << std::endl;
+		empty_block = upd.find_empty_block(empty_block.second, 1);
 	}
 
 	return upd;

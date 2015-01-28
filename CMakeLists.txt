@@ -7,6 +7,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 file(GLOB_RECURSE SRCS "src/*")
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
+SET(CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE} -pg")
 
 IF("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
 # Use -flto flag to enable GCC's link-time optimization.
