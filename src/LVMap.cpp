@@ -19,18 +19,18 @@
 #include <list>
 
 LVMap::LVMap() : size(0) {}
-LVMap::LVMap(const Botan::SymmetricKey& key) : size(0) {setKey(key);}
+LVMap::LVMap(const Botan::SymmetricKey& key) : size(0), key(key) {}
 
 LVMap::~LVMap() {}
 
-LVMap::Chunk LVMap::processChunk(const std::string& binchunk, const Botan::InitializationVector& iv){
+LVMap::Chunk LVMap::process_block(const std::string& binchunk, const Botan::InitializationVector& iv){
 	Chunk proc;
-	proc.meta.length = (uint32_t)binchunk.size();
+	proc.meta.blocksize = (uint32_t)binchunk.size();
 	memcpy(proc.meta.iv.data(), &*iv.bits_of().begin(), AES_BLOCKSIZE);
-	proc.weak_hash = RsyncChecksum(binchunk);
+	proc.encrypted.weak_hash = RsyncChecksum(binchunk);
 
-	std::string encrypted = encrypt(binchunk, key, iv, proc.meta.length % AES_BLOCKSIZE == 0 ? true : false);
-	memcpy(proc.meta.strong_hash.data(), compute_shash(binchunk.data(), binchunk.size()).data(), SHASH_LENGTH);
+	std::string encrypted = encrypt(binchunk, key, iv, proc.meta.blocksize % AES_BLOCKSIZE == 0 ? true : false);
+	memcpy(proc.encrypted.strong_hash.data(), compute_shash(binchunk.data(), binchunk.size()).data(), SHASH_LENGTH);
 
 	return proc;
 }
@@ -43,66 +43,44 @@ std::array<char, SHASH_LENGTH> LVMap::compute_shash(const char* data, size_t len
 	return hash_array;
 }
 
-void LVMap::setSize(uint64_t new_size) {
-}
-
-void LVMap::clear() {
-}
-
 void LVMap::create(std::istream& datafile) {
 	std::string rdbuf;
 
 	offset_t offset = 0;
 	do {
-		rdbuf.resize(LV_MAXCHUNKSIZE);
-		datafile.read(&*rdbuf.begin(), LV_MAXCHUNKSIZE);
+		rdbuf.resize(LV_MAXBLOCKSIZE);
+		datafile.read(&*rdbuf.begin(), LV_MAXBLOCKSIZE);
 		rdbuf.resize(datafile.gcount());
 		if(datafile.gcount() > 0){
 			offset += datafile.gcount();
 			std::string encrypted;
-			std::shared_ptr<Chunk> processed_chunk = std::make_shared<Chunk>(processChunk(rdbuf));
+			std::shared_ptr<Chunk> processed_chunk = std::make_shared<Chunk>(process_block(rdbuf));
 
-			hashed_chunks.insert({processed_chunk->weak_hash, processed_chunk});
-			offset_chunks.insert({offset, processed_chunk});
+			hashed_blocks.insert({processed_chunk->encrypted.weak_hash, processed_chunk});
+			offset_blocks.insert({offset, processed_chunk});
 		}
 	} while(datafile.good());
 
 	size = filesize(datafile);
 }
 
-decltype(LVMap::hashed_chunks)::iterator LVMap::match_block(decltype(hashed_chunks)& chunkset, const std::string& chunkbuf, RsyncChecksum checksum) {
-	auto eqhash_blocks = hashed_chunks.equal_range(checksum);
-	if(eqhash_blocks != std::make_pair(hashed_chunks.end(), hashed_chunks.end())){
+decltype(LVMap::hashed_blocks)::iterator LVMap::match_block(decltype(hashed_blocks)& chunkset, const std::string& chunkbuf, RsyncChecksum checksum) {
+	auto eqhash_blocks = chunkset.equal_range(checksum);
+	if(eqhash_blocks != std::make_pair(chunkset.end(), chunkset.end())){
 		for(auto eqhash_block = eqhash_blocks.first; eqhash_block != eqhash_blocks.second; eqhash_block++){
-			if(compute_shash(chunkbuf.data(), chunkbuf.length()) == eqhash_block->second->meta.strong_hash){
-				std::cout << "Matched block: " << to_hex(checksum) << " size=" << chunkbuf.size() << std::endl;
+			if(compute_shash(chunkbuf.data(), chunkbuf.length()) == eqhash_block->second->encrypted.strong_hash){
+				//std::cout << "Matched block: " << to_hex(checksum) << " size=" << chunkbuf.size() << std::endl;
 				return eqhash_block;
 			}
 		}
 	}
-	return hashed_chunks.end();
-}
-
-std::pair<LVMap::offset_t, LVMap::offset_t> LVMap::find_empty_block(offset_t from, offset_t minsize) {
-	while(from < size){
-		auto it = offset_chunks.lower_bound(from);
-		if(it == offset_chunks.end()){
-			if(size-from >= minsize){
-				return {from, size};
-			}else break;	// as we reached eof.
-		}else if(it->first-from < minsize){
-			from = it->first + it->second->meta.length;
-		}else{
-			return {from, it->first};
-		}
-	}
-	return {0,0};
+	return hashed_blocks.end();
 }
 
 LVMap LVMap::update(std::istream& datafile) {
 	LVMap upd(key); upd.size = filesize(datafile);
 
-	auto chunks_left = hashed_chunks;	// This will move into upd one by one.
+	auto chunks_left = hashed_blocks;	// This will move into upd one by one.
 
 	// Create a set of chunk sizes, sorted in descending order with power of 2 values before other.
 	struct greater_pow2_prio {
@@ -116,7 +94,7 @@ LVMap LVMap::update(std::istream& datafile) {
 			return false;
 		}
 	};
-	std::set<uint32_t, greater_pow2_prio> chunk_sizes; for(auto chunk : offset_chunks){chunk_sizes.insert(chunk.second->meta.length);}
+	std::set<uint32_t, greater_pow2_prio> chunk_sizes; for(auto chunk : offset_blocks){chunk_sizes.insert(chunk.second->meta.blocksize);}
 
 	//
 	using empty_block_t = std::pair<offset_t, offset_t>;	// offset, length.
@@ -128,7 +106,7 @@ LVMap LVMap::update(std::istream& datafile) {
 		boost::circular_buffer<char> chunkbuf_cb(chunksize);
 
 		for(auto empty_block_it = empty_blocks.begin(); empty_block_it != empty_blocks.end(); ){
-			if(empty_block_it->second < chunksize) continue;
+			if(empty_block_it->second < chunksize) {empty_block_it++; continue;}
 
 			offset_t offset = empty_block_it->first;
 
@@ -137,11 +115,12 @@ LVMap LVMap::update(std::istream& datafile) {
 			chunkbuf_cb.assign(chunkbuf_s.begin(), chunkbuf_s.end());
 			RsyncChecksum checksum(chunkbuf_s);
 
-			auto matched_it = match_block(chunks_left, chunkbuf_s, checksum);	// TODO: Matches the same block.
+			decltype(LVMap::hashed_blocks)::iterator matched_it;
 			do {
+				matched_it = match_block(chunks_left, chunkbuf_s, checksum);
 				if(matched_it != chunks_left.end()){
-					upd.offset_chunks.insert(std::make_pair(offset, matched_it->second));
-					upd.hashed_chunks.insert(std::make_pair(checksum, matched_it->second));
+					upd.offset_blocks.insert(std::make_pair(offset, matched_it->second));
+					upd.hashed_blocks.insert(std::make_pair(checksum, matched_it->second));
 					if(offset == empty_block_it->first && chunksize == empty_block_it->second){	// Matched block fits perfectly in empty block
 						empty_blocks.erase(empty_block_it++);
 					}else if(offset == empty_block_it->first){	// Matched block is in the beginning of empty block
@@ -159,7 +138,7 @@ LVMap LVMap::update(std::istream& datafile) {
 					chunks_left.erase(matched_it);
 					break;
 				}
-				if(datafile.tellg() != empty_block_it->first+empty_block_it->second){
+				if(offset != empty_block_it->first+empty_block_it->second){
 					char old_char = chunkbuf_cb.front();
 					chunkbuf_cb.push_back(datafile.get());
 					checksum.roll(reinterpret_cast<uint8_t&>(old_char), reinterpret_cast<uint8_t&>(*(chunkbuf_cb.end()-1)));
@@ -170,39 +149,6 @@ LVMap LVMap::update(std::istream& datafile) {
 				empty_block_it++;
 			}
 		}
-
-		/*// Refactor below.
-		while(empty_block != std::pair<offset_t, offset_t>(0,0)){
-			// Block beginning
-			chunkbuf.resize(chunksize);
-			datafile.seekg(empty_block.first);
-			datafile.read(&*chunkbuf.begin(), chunksize);
-			RsyncChecksum checksum(chunkbuf);
-
-			auto matched_it = match_block(chunks_left, chunkbuf, checksum);	// TODO: Matches the same block.
-			if(matched_it != boost::optional<decltype(hashed_chunks)::iterator>()){
-				upd.offset_chunks.insert(std::make_pair(offset, matched_it.get()->second));
-				upd.hashed_chunks.insert(std::make_pair(checksum, matched_it.get()->second));
-				//chunks_left.erase(matched_it.get());
-			}else{
-				std::deque<char> reading_queue(chunkbuf.begin(), chunkbuf.end());
-				do {
-					reading_queue.push_back(datafile.get());
-					checksum.roll(reinterpret_cast<uint8_t&>(reading_queue.front()), reinterpret_cast<uint8_t&>(reading_queue.back()));
-					reading_queue.pop_front();
-					offset++;
-
-					matched_it = match_block(chunks_left, std::string(reading_queue.begin(), reading_queue.end()), checksum);
-					if(matched_it != boost::optional<decltype(hashed_chunks)::iterator>()){
-						upd.offset_chunks.insert(std::make_pair(offset, matched_it.get()->second));
-						upd.hashed_chunks.insert(std::make_pair(checksum, matched_it.get()->second));
-						//chunks_left.erase(matched_it.get());
-						break;
-					}
-				} while(datafile.tellg() != empty_block.second);
-			}
-			empty_block = upd.find_empty_block(offset+chunksize, chunksize);
-		}*/
 	}
 
 	for(auto empty_block_it = empty_blocks.begin(); empty_block_it != empty_blocks.end(); ){
@@ -220,25 +166,25 @@ void LVMap::from_file(std::istream& lvfile){
 		lvfile.read(reinterpret_cast<char*>(chunk.get()), sizeof(Chunk));
 
 		if(lvfile.gcount() == sizeof(Chunk)){
-			hashed_chunks.insert(std::make_pair(chunk->weak_hash, chunk));
-			offset_chunks.insert(std::make_pair(size, chunk));
-			size += chunk->meta.length;
+			hashed_blocks.insert(std::make_pair(chunk->encrypted.weak_hash, chunk));
+			offset_blocks.insert(std::make_pair(size, chunk));
+			size += chunk->meta.blocksize;
 		}
 	} while(lvfile.good());
 }
 
 void LVMap::to_file(std::ostream& lvfile){
-	for(auto chunk : offset_chunks){
+	for(auto chunk : offset_blocks){
 		lvfile.write(reinterpret_cast<char*>(chunk.second.get()), sizeof(Chunk));
 	}
 }
 
 void LVMap::print_debug(){
 	int i = 0;
-	for(auto chunk : offset_chunks){
-		std::cout << "#: " << ++i << " L: " << chunk.second->meta.length << std::endl;
-		std::cout << "Rsync: " << to_hex(chunk.second->weak_hash) << std::endl;
-		std::cout << "SHA-3: " << to_hex(chunk.second->meta.strong_hash.data()) << std::endl;
+	for(auto chunk : offset_blocks){
+		std::cout << "#: " << ++i << " L: " << chunk.second->meta.blocksize << std::endl;
+		std::cout << "Rsync: " << to_hex(chunk.second->encrypted.weak_hash) << std::endl;
+		std::cout << "SHA-3: " << to_hex(chunk.second->encrypted.strong_hash.data()) << std::endl;
 		std::cout << "IV: " << to_hex(chunk.second->meta.iv.data()) << std::endl << std::endl;
 	}
 }

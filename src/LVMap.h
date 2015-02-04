@@ -28,8 +28,8 @@
 #include <iostream>
 #include <memory>
 
-constexpr size_t LV_MAXCHUNKSIZE = 4096;
-constexpr size_t LV_MINCHUNKSIZE = 256;
+constexpr size_t LV_MAXBLOCKSIZE = 2*1024*1024;	// 2 MiB
+constexpr size_t LV_MINBLOCKSIZE = 32 * 1024;	// 32 KiB
 constexpr size_t AES_BLOCKSIZE = 16;
 constexpr size_t AES_KEYSIZE = 32;
 constexpr size_t SHASH_LENGTH = 28;
@@ -37,37 +37,40 @@ constexpr size_t SHASH_LENGTH = 28;
 class LVMap {
 	using offset_t = uint64_t;
 
+	struct Header {
+		const std::array<char, 4> magic = {'L', 'V', 'S', '\n'};
+		uint32_t maxblocksize;
+		uint32_t minblocksize;
+	};	// 12 bytes
 	struct Chunk {
 		struct Meta {
-			std::array<char, SHASH_LENGTH> strong_hash; uint32_t length;	// 32 bytes
-			std::array<char, AES_BLOCKSIZE> iv;
+			std::array<char, SHASH_LENGTH> encrypted_hash;	// 28 bytes
+			uint32_t blocksize;	// 4 bytes
+			std::array<char, AES_BLOCKSIZE> iv;	// 16 bytes
 		} meta;	// 48 bytes
-		weakhash_t weak_hash;	// 4 bytes
-	};
+		struct Encrypted {
+			weakhash_t weak_hash;	// 4 bytes
+			std::array<char, SHASH_LENGTH> strong_hash;	// 28 bytes
+		} encrypted;	// 32 bytes = 2 AES blocks without padding
+	};	// 80 bytes.
 
-	std::unordered_multimap<weakhash_t, std::shared_ptr<Chunk>> hashed_chunks;
-	std::map<offset_t, std::shared_ptr<Chunk>> offset_chunks;
+	std::unordered_multimap<weakhash_t, std::shared_ptr<Chunk>> hashed_blocks;
+	std::map<offset_t, std::shared_ptr<Chunk>> offset_blocks;
 
 	offset_t size;
 
 	Botan::SymmetricKey key;
 
-	Chunk processChunk(const std::string& binchunk){Botan::AutoSeeded_RNG rng; auto iv = rng.random_vec(AES_BLOCKSIZE); return processChunk(binchunk, iv);};
-	Chunk processChunk(const std::string& binchunk, const Botan::InitializationVector& iv);
+	Chunk process_block(const std::string& binchunk){Botan::AutoSeeded_RNG rng; auto iv = rng.random_vec(AES_BLOCKSIZE); return process_block(binchunk, iv);};
+	Chunk process_block(const std::string& binchunk, const Botan::InitializationVector& iv);
 
-	decltype(hashed_chunks)::iterator match_block(decltype(hashed_chunks)& chunkset, const std::string& chunkbuf, RsyncChecksum checksum);
+	decltype(hashed_blocks)::iterator match_block(decltype(hashed_blocks)& chunkset, const std::string& chunkbuf, RsyncChecksum checksum);
 
 	std::array<char, SHASH_LENGTH> compute_shash(const char* data, size_t length) const;
-	std::pair<offset_t, offset_t> find_empty_block(offset_t from, offset_t minsize);
 public:
 	LVMap();
 	LVMap(const Botan::SymmetricKey& key);
 	virtual ~LVMap();
-
-	void setKey(const Botan::SymmetricKey& key){this->key = key;};
-	void setSize(uint64_t new_size);
-
-	void clear();
 
 	void create(std::istream& datafile);
 	LVMap update(std::istream& datafile);

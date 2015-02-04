@@ -29,7 +29,7 @@ int main(int argc, char** argv){
 		LVMap lvmap(Botan::secure_vector<uint8_t>(argv[4], argv[4]+AES_KEYSIZE));
 		lvmap.create(datafile);
 		lvmap.to_file(lvfile);
-	}else if(strcmp(argv[1], "read") == 0){	// also known as rechunk
+	}else if(strcmp(argv[1], "read") == 0){
 		std::ifstream lvfile(argv[2]);
 
 		LVMap lvmap;
