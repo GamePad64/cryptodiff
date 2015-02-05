@@ -12,10 +12,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "LVMap.h"
+#include <botan/symkey.h>
 #include <botan/botan.h>
 #include <iostream>
 #include <fstream>
+
+#include "FileMap.h"
 
 int main(int argc, char** argv){
 	Botan::LibraryInitializer init("thread_safe=true");
@@ -24,25 +26,31 @@ int main(int argc, char** argv){
 
 	if(strcmp(argv[1], "create") == 0){
 		std::ifstream datafile(argv[2]);
-		std::ofstream lvfile(argv[3]);
+		std::ofstream mapfile(argv[3]);
 
-		LVMap lvmap(Botan::secure_vector<uint8_t>(argv[4], argv[4]+AES_KEYSIZE));
-		lvmap.create(datafile);
-		lvmap.to_file(lvfile);
+		FileMap filemap(Botan::SymmetricKey(reinterpret_cast<uint8_t*>(argv[4]), AES_KEYSIZE));
+		filemap.create(datafile);
+		filemap.to_file(mapfile);
 	}else if(strcmp(argv[1], "read") == 0){
-		std::ifstream lvfile(argv[2]);
+		std::ifstream mapfile(argv[2]);
 
-		LVMap lvmap;
-		lvmap.from_file(lvfile);
-		lvmap.print_debug();
-	}else if(strcmp(argv[1], "update") == 0){	// also known as rechunk
+		std::unique_ptr<EncFileMap> filemap;
+		if(argc == 4){
+			filemap = std::unique_ptr<EncFileMap>(new FileMap(Botan::SymmetricKey(reinterpret_cast<uint8_t*>(argv[3]), AES_KEYSIZE)));
+		}else{
+			filemap = std::unique_ptr<EncFileMap>(new EncFileMap());
+		}
+
+		filemap->from_file(mapfile);
+		filemap->print_debug();
+	}/*else if(strcmp(argv[1], "update") == 0){	// also known as rechunk
 		std::ifstream datafile(argv[2]);
-		std::ifstream lvfile_old(argv[3]);
-		std::ofstream lvfile_new(argv[4]);
+		std::ifstream mapfile_old(argv[3]);
+		std::ofstream mapfile_new(argv[4]);
 
-		LVMap lvmap_old(Botan::secure_vector<uint8_t>(argv[5], argv[5]+AES_KEYSIZE));
-		lvmap_old.from_file(lvfile_old);
-		LVMap lvmap_new = lvmap_old.update(datafile);
-		lvmap_new.to_file(lvfile_new);
-	}
+		FileMap filemap_old(Botan::secure_vector<uint8_t>(argv[5], argv[5]+AES_KEYSIZE));
+		filemap_old.from_file(mapfile_old);
+		FileMap filemap_new = filemap_old.update(datafile);
+		filemap_new.to_file(mapfile_new);
+	}*/
 }

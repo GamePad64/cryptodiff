@@ -13,40 +13,37 @@
  */
 #pragma once
 
+#include "RsyncChecksum.h"
+#include <boost/circular_buffer.hpp>
 #include <cstdint>
 #include <string>
 
 using weakhash_t = uint32_t;
 
-class RsyncChecksum {
-	const uint8_t char_offset = 31;
-	size_t count = 0;
-	weakhash_t s1 = 0, s2 = 0;
+class StatefulRsyncChecksum {
+	RsyncChecksum checksum;
+	boost::circular_buffer<uint8_t> state_buffer;
 public:
-	RsyncChecksum(){}
-	template<class InputIterator> RsyncChecksum(InputIterator first, InputIterator last) : RsyncChecksum(){compute(first, last);}
+	StatefulRsyncChecksum() {}
+	template<class InputIterator> StatefulRsyncChecksum(InputIterator first, InputIterator last) : StatefulRsyncChecksum(){compute(first, last);}
 
-	operator weakhash_t() const {return (s1 & 0xffff) | (s2 << 16);}
+	operator weakhash_t() const {return checksum;}
+	operator RsyncChecksum() const {return checksum;};
 
 	/**
 	 * Computation itself. Based on work of Donovan Baarda <abo@minkirri.apana.org.au>. Code modified from librsync.
-	 * @param first
-	 * @param last
+	 * @param source
+	 * @param len
 	 * @return
 	 */
 	template<class InputIterator> weakhash_t compute(InputIterator first, InputIterator last){
-		s1 = 0; s2 = 0; count = 0;
-		for(auto it = first; it != last; it++){
-			s1 += (reinterpret_cast<const uint8_t&>(*first) + char_offset);
-			s2 += s1;
-			count++;
-		}
-		return static_cast<uint32_t>(*this);
+		state_buffer.assign(first, last);
+		return checksum.compute(first, last);
 	}
 
-	weakhash_t roll(uint8_t out, uint8_t in){
-		s1 -= (out+char_offset); s1 += (in+char_offset);
-		s2 -= count*(out+char_offset); s2 += s1;
-		return static_cast<uint32_t>(*this);
+	weakhash_t roll(uint8_t in){
+		checksum.roll(state_buffer.front(), in);
+		state_buffer.push_back(in);
+		return checksum;
 	}
 };
