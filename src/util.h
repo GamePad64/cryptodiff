@@ -39,7 +39,14 @@ inline uint64_t filesize(std::ostream& ofile){
 }
 
 inline std::string encrypt(const std::string& data, Botan::SymmetricKey key, Botan::InitializationVector iv, bool nopad = false) {
-	Botan::Pipe pipe(get_cipher(nopad ? "AES-256/CBC/NoPadding" : "AES-256/CBC", Botan::OctetString(key), Botan::OctetString(iv), Botan::ENCRYPTION));
+	Botan::Pipe pipe(get_cipher(nopad ? "AES-256/CBC/NoPadding" : "AES-256/CBC", key, iv, Botan::ENCRYPTION));
+	pipe.process_msg(data);
+
+	return pipe.read_all_as_string(0);
+}
+
+inline std::string decrypt(const std::string& data, Botan::SymmetricKey key, Botan::InitializationVector iv, bool nopad = false) {
+	Botan::Pipe pipe(get_cipher(nopad ? "AES-256/CBC/NoPadding" : "AES-256/CBC", key, iv, Botan::DECRYPTION));
 	pipe.process_msg(data);
 
 	return pipe.read_all_as_string(0);

@@ -43,7 +43,7 @@ int main(int argc, char** argv){
 
 		filemap->from_file(mapfile);
 		filemap->print_debug();
-	}/*else if(strcmp(argv[1], "update") == 0){	// also known as rechunk
+	}else if(strcmp(argv[1], "update") == 0){	// also known as rechunk
 		std::ifstream datafile(argv[2]);
 		std::ifstream mapfile_old(argv[3]);
 		std::ofstream mapfile_new(argv[4]);
@@ -52,5 +52,5 @@ int main(int argc, char** argv){
 		filemap_old.from_file(mapfile_old);
 		FileMap filemap_new = filemap_old.update(datafile);
 		filemap_new.to_file(mapfile_new);
-	}*/
+	}
 }

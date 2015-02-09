@@ -6,6 +6,7 @@
  */
 
 #include "EncFileMap.h"
+#include "EncFileMap.pb.h"
 
 EncFileMap::EncFileMap() {
 	// TODO Auto-generated constructor stub
@@ -31,9 +32,17 @@ void EncFileMap::from_file(std::istream& lvfile){
 }
 
 void EncFileMap::to_file(std::ostream& lvfile){
-	for(auto chunk : offset_blocks){
-		lvfile.write(reinterpret_cast<char*>(chunk.second.get()), sizeof(Block));
+	EncFileMap_s serialized_map;
+	serialized_map.set_maxblocksize(maxblocksize);
+	serialized_map.set_minblocksize(minblocksize);
+	for(auto block : offset_blocks){
+		auto new_block = serialized_map.add_blocks();
+		new_block->set_encrypted_hash(block.second->encrypted_hash.data(), block.second->encrypted_hash.size());
+		new_block->set_blocksize(block.second->blocksize);
+		new_block->set_iv(block.second->iv.data(), block.second->iv.size());
+		new_block->set_encrypted_hashes(block.second->encrypted_hashes_part.data(), block.second->encrypted_hashes_part.size());
 	}
+	serialized_map.SerializeToOstream(&lvfile);
 }
 
 void EncFileMap::print_debug() const {
@@ -43,7 +52,7 @@ void EncFileMap::print_debug() const {
 		std::cout << "SHA3(Enc): " << to_hex(chunk.second->encrypted_hash.data()) << std::endl;
 		std::cout << "IV: " << to_hex(chunk.second->iv.data()) << std::endl;
 
-		std::cout << "AES(Hashes(Block)): " << to_hex(chunk.second->encrypted_data.data()) << std::endl << std::endl;
+		std::cout << "AES(Hashes(Block)): " << to_hex(chunk.second->encrypted_hashes_part.data()) << std::endl << std::endl;
 		//std::cout << "Rsync: " << to_hex(chunk.second->encrypted.weak_hash) << std::endl;
 		//std::cout << "SHA-3: " << to_hex(chunk.second->encrypted.strong_hash.data()) << std::endl;
 	}

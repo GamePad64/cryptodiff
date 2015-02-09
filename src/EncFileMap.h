@@ -44,12 +44,12 @@ public:
 	uint32_t blocksize;	// 4 bytes
 	std::array<char, AES_BLOCKSIZE> iv;	// 16 bytes
 
-	struct Encrypted {
+	struct Hashes {
 		weakhash_t weak_hash;	// 4 bytes
 		std::array<char, SHASH_LENGTH> strong_hash;	// 28 bytes
 	};
-	std::array<char, sizeof(Encrypted)> encrypted_data;
-	Encrypted decrypted_data;
+	std::array<char, sizeof(Hashes)> encrypted_hashes_part;
+	Hashes decrypted_hashes_part;
 };
 
 class EncFileMap {

@@ -17,6 +17,10 @@ protected:
 
 	Botan::SymmetricKey key;
 
+	// Encrypt
+	Block::Hashes decrypt_hashes(const std::array<char, sizeof(Block::Hashes)>& encrypted_hashes, const Botan::InitializationVector& iv, const Botan::SymmetricKey& key);
+	std::array<char, sizeof(Block::Hashes)> encrypt_hashes(Block::Hashes decrypted_hashes, const Botan::InitializationVector& iv, const Botan::SymmetricKey& key);
+
 	// Subroutines for creating block signature
 	Block process_block(const std::string& binblock){Botan::AutoSeeded_RNG rng; auto iv = rng.random_vec(AES_BLOCKSIZE); return process_block(binblock, iv);};
 	Block process_block(const std::string& binblock, const Botan::InitializationVector& iv);

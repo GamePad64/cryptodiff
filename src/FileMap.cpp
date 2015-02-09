@@ -10,6 +10,7 @@
 #include "crypto/StatefulRsyncChecksum.h"
 #include <boost/log/trivial.hpp>
 #include <boost/circular_buffer.hpp>
+#include <boost/asio.hpp>	//htonl, ntohl
 #include <list>
 
 Block FileMap::process_block(const std::string& binblock,
@@ -21,11 +22,11 @@ Block FileMap::process_block(const std::string& binblock,
 	std::string encrypted_block = encrypt(binblock, key, iv, proc.blocksize % AES_BLOCKSIZE == 0 ? true : false);
 	memcpy(proc.encrypted_hash.data(), compute_shash(encrypted_block.data(), encrypted_block.size()).data(), SHASH_LENGTH);
 
-	memcpy(proc.decrypted_data.strong_hash.data(), compute_shash(binblock.data(), binblock.size()).data(), SHASH_LENGTH);
-	proc.decrypted_data.weak_hash = RsyncChecksum(binblock.begin(), binblock.end());
+	memcpy(proc.decrypted_hashes_part.strong_hash.data(), compute_shash(binblock.data(), binblock.size()).data(), SHASH_LENGTH);
+	proc.decrypted_hashes_part.weak_hash = RsyncChecksum(binblock.begin(), binblock.end());
 
-	std::string encrypted_data_s = encrypt(std::string(reinterpret_cast<char*>(&(proc.decrypted_data)), sizeof(Block::Encrypted)), key, iv, true);
-	memcpy(proc.encrypted_data.data(), encrypted_data_s.data(), encrypted_data_s.size());
+	std::string encrypted_data_s = encrypt(std::string(reinterpret_cast<char*>(&(proc.decrypted_hashes_part)), sizeof(Block::Hashes)), key, iv, true);
+	memcpy(proc.encrypted_hashes_part.data(), encrypted_data_s.data(), encrypted_data_s.size());
 
 	return proc;
 }
@@ -34,7 +35,7 @@ decltype(FileMap::hashed_blocks)::iterator FileMap::match_block(decltype(hashed_
 	auto eqhash_blocks = blockset.equal_range(checksum);
 	if(eqhash_blocks != std::make_pair(blockset.end(), blockset.end())){
 		for(auto eqhash_block = eqhash_blocks.first; eqhash_block != eqhash_blocks.second; eqhash_block++){
-			if(compute_shash(blockbuf.data(), blockbuf.length()) == eqhash_block->second->decrypted_data.strong_hash){
+			if(compute_shash(blockbuf.data(), blockbuf.length()) == eqhash_block->second->decrypted_hashes_part.strong_hash){
 				//std::cout << "Matched block: " << to_hex(checksum) << " size=" << chunkbuf.size() << std::endl;
 				return eqhash_block;
 			}
@@ -59,7 +60,7 @@ void FileMap::create(std::istream& datafile, uint32_t maxblocksize,	uint32_t min
 			std::string encrypted;
 			std::shared_ptr<Block> processed_chunk = std::make_shared<Block>(process_block(rdbuf));
 
-			hashed_blocks.insert({processed_chunk->decrypted_data.weak_hash, processed_chunk});
+			hashed_blocks.insert({processed_chunk->decrypted_hashes_part.weak_hash, processed_chunk});
 			offset_blocks.insert({offset, processed_chunk});
 		}
 	} while(datafile.good());
@@ -145,6 +146,27 @@ FileMap FileMap::update(std::istream& datafile) {
 	return upd;
 }
 
+Block::Hashes FileMap::decrypt_hashes(
+		const std::array<char, sizeof(Block::Hashes)>& encrypted_hashes,
+		const Botan::InitializationVector& iv, const Botan::SymmetricKey& key) {
+	Block::Hashes decrypted_hashes;
+	std::string decrypted_string = decrypt(std::string(encrypted_hashes.begin(), encrypted_hashes.end()), key, iv, true);
+	memcpy(&decrypted_hashes, decrypted_string.data(), sizeof(Block::Hashes));
+	decrypted_hashes.weak_hash = ntohl(decrypted_hashes.weak_hash);
+	return decrypted_hashes;
+}
+
+std::array<char, sizeof(Block::Hashes)> FileMap::encrypt_hashes(
+		Block::Hashes decrypted_hashes,
+		const Botan::InitializationVector& iv, const Botan::SymmetricKey& key) {
+	decrypted_hashes.weak_hash = htonl(decrypted_hashes.weak_hash);
+	auto encrypted_str = encrypt(std::string(reinterpret_cast<char*>(&decrypted_hashes), sizeof(Block::Hashes)), key, iv, true);
+	std::array<char, sizeof(Block::Hashes)> enc_array;
+	memcpy(enc_array.data(), encrypted_str.data(), sizeof(Block::Hashes));
+
+	return enc_array;
+}
+
 void FileMap::print_debug() const {
 	int i = 0;
 	for(auto chunk : offset_blocks){
@@ -152,7 +174,7 @@ void FileMap::print_debug() const {
 		std::cout << "SHA3(Enc): " << to_hex(chunk.second->encrypted_hash.data()) << std::endl;
 		std::cout << "IV: " << to_hex(chunk.second->iv.data()) << std::endl;
 
-		std::cout << "Rsync(Block): " << to_hex(chunk.second->decrypted_data.weak_hash) << std::endl;
-		std::cout << "SHA3(Block): " << to_hex(chunk.second->decrypted_data.strong_hash.data()) << std::endl << std::endl;
+		std::cout << "Rsync(Block): " << to_hex(chunk.second->decrypted_hashes_part.weak_hash) << std::endl;
+		std::cout << "SHA3(Block): " << to_hex(chunk.second->decrypted_hashes_part.strong_hash.data()) << std::endl << std::endl;
 	}
 }
