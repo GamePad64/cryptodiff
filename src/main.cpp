@@ -33,27 +33,6 @@ int main(int argc, char** argv){
 		FileMap filemap(Botan::SymmetricKey(reinterpret_cast<uint8_t*>(argv[4]), AES_KEYSIZE));
 		filemap.create(datafile);
 		filemap.to_file(mapfile);
-	}else if(strcmp(argv[1], "mcreate") == 0){
-		boost::iostreams::mapped_file datafile(argv[2], boost::iostreams::mapped_file::readonly);
-		std::ofstream mapfile(argv[3]);
-
-		FileMap filemap(Botan::SymmetricKey(reinterpret_cast<uint8_t*>(argv[4]), AES_KEYSIZE));
-		filemap.create_mmap((const uint8_t*)datafile.const_data(), datafile.size());
-		filemap.to_file(mapfile);
-	}else if(strcmp(argv[1], "mtcreate") == 0){
-		std::ifstream datafile(argv[2]);
-		std::ofstream mapfile(argv[3]);
-
-		FileMap filemap(Botan::SymmetricKey(reinterpret_cast<uint8_t*>(argv[4]), AES_KEYSIZE));
-		filemap.create_mt(datafile);
-		filemap.to_file(mapfile);
-	}else if(strcmp(argv[1], "mtmcreate") == 0){
-		boost::iostreams::mapped_file datafile(argv[2], boost::iostreams::mapped_file::readonly);
-		std::ofstream mapfile(argv[3]);
-
-		FileMap filemap(Botan::SymmetricKey(reinterpret_cast<uint8_t*>(argv[4]), AES_KEYSIZE));
-		filemap.create_mmap_mt((const uint8_t*)datafile.const_data(), datafile.size());
-		filemap.to_file(mapfile);
 	}else if(strcmp(argv[1], "read") == 0){
 		std::ifstream mapfile(argv[2]);
 

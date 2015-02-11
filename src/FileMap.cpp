@@ -48,32 +48,6 @@ FileMap::FileMap(const Botan::SymmetricKey& key) : key(key) {}
 FileMap::~FileMap() {}
 
 void FileMap::create(std::istream& datafile, uint32_t maxblocksize, uint32_t minblocksize) {
-	std::string rdbuf;
-
-	this->maxblocksize = maxblocksize;
-	this->minblocksize = minblocksize;
-
-	offset_t offset = 0;
-	int block_count = 0;
-	do {
-		rdbuf.resize(maxblocksize);
-		datafile.read(&*rdbuf.begin(), maxblocksize);
-		rdbuf.resize(datafile.gcount());
-		if(datafile.gcount() > 0){
-			offset += datafile.gcount();
-			std::shared_ptr<Block> processed_block = std::make_shared<Block>(process_block((uint8_t*)rdbuf.data(), rdbuf.size()));
-
-			print_debug_block(*processed_block, ++block_count);
-
-			hashed_blocks.insert({processed_block->decrypted_hashes_part.weak_hash, processed_block});
-			offset_blocks.insert({offset, processed_block});
-		}
-	} while(datafile.good());
-
-	size = filesize(datafile);
-}
-
-void FileMap::create_mt(std::istream& datafile, uint32_t maxblocksize, uint32_t minblocksize) {
 	this->maxblocksize = maxblocksize;
 	this->minblocksize = minblocksize;
 	size = filesize(datafile);
@@ -81,40 +55,12 @@ void FileMap::create_mt(std::istream& datafile, uint32_t maxblocksize, uint32_t 
 	fill_with_map(datafile, {0, size});
 }
 
-void FileMap::create_mmap_mt(const uint8_t* mmaped, size_t size, uint32_t maxblocksize, uint32_t minblocksize) {
-	this->maxblocksize = maxblocksize;
-	this->minblocksize = minblocksize;
-	this->size = size;
-
-	fill_with_map_mmap(mmaped, size, {0, size});
-}
-
-void FileMap::create_mmap(const uint8_t* mmaped, size_t size, uint32_t maxblocksize, uint32_t minblocksize) {
-	this->maxblocksize = maxblocksize;
-	this->minblocksize = minblocksize;
-
-	offset_t offset = 0;
-	int block_count = 0;
-	this->size = size;
-	do {
-		std::shared_ptr<Block> processed_block = std::make_shared<Block>(process_block(mmaped, std::min((size_t)maxblocksize, size)));
-		offset += processed_block->blocksize;
-		mmaped += processed_block->blocksize;
-		size -= processed_block->blocksize;
-
-		print_debug_block(*processed_block, ++block_count);
-
-		hashed_blocks.insert({processed_block->decrypted_hashes_part.weak_hash, processed_block});
-		offset_blocks.insert({offset, processed_block});
-	} while(size > 0);
-}
-
 FileMap FileMap::update(std::istream& datafile) {
 	FileMap upd(key); upd.size = filesize(datafile);
 
-	auto chunks_left = hashed_blocks;       // This will move into upd one by one.
+	auto blocks_left = hashed_blocks;       // This will move into upd one by one.
 
-	// Create a set of chunk sizes, sorted in descending order with power of 2 values before other.
+	// Create a set of block sizes, sorted in descending order with power of 2 values before other.
 	struct greater_pow2_prio {
 		bool operator()(const uint32_t& lhs, const uint32_t& rhs){
 			bool pow2l = (lhs != 0) && ((lhs & (lhs - 1)) == 0);
@@ -126,45 +72,45 @@ FileMap FileMap::update(std::istream& datafile) {
 			return false;
 		}
 	};
-	std::set<uint32_t, greater_pow2_prio> chunk_sizes; for(auto chunk : offset_blocks){chunk_sizes.insert(chunk.second->blocksize);}
+	std::set<uint32_t, greater_pow2_prio> block_sizes; for(auto block : offset_blocks){block_sizes.insert(block.second->blocksize);}
 
 	//
 	std::list<empty_block_t> empty_blocks;  // contains empty_block_t's
 	empty_blocks.push_back(empty_block_t(0, upd.size));
 
-	for(auto chunksize : chunk_sizes){
-		std::string chunkbuf_s; chunkbuf_s.resize(chunksize);
+	for(auto blocksize : block_sizes){
+		std::vector<uint8_t> blockbuf; blockbuf.resize(blocksize);
 
 		for(auto empty_block_it = empty_blocks.begin(); empty_block_it != empty_blocks.end(); ){
-			if(empty_block_it->second < chunksize) {empty_block_it++; continue;}
+			if(empty_block_it->second < blocksize) {empty_block_it++; continue;}
 
 			offset_t offset = empty_block_it->first;
 
 			datafile.seekg(offset);
-			datafile.read(&*chunkbuf_s.begin(), chunksize);
-			StatefulRsyncChecksum checksum(chunkbuf_s.begin(), chunkbuf_s.end());
+			datafile.read((char*)blockbuf.data(), blocksize);
+			StatefulRsyncChecksum checksum(blockbuf.begin(), blockbuf.end());
 
 			decltype(hashed_blocks)::iterator matched_it;
 			do {
-				matched_it = match_block((uint8_t*)chunkbuf_s.data(), chunkbuf_s.size(), chunks_left, checksum);
-				if(matched_it != chunks_left.end()){
+				matched_it = match_block((uint8_t*)blockbuf.data(), blockbuf.size(), blocks_left, checksum);
+				if(matched_it != blocks_left.end()){
 					upd.offset_blocks.insert(std::make_pair(offset, matched_it->second));
 					upd.hashed_blocks.insert(std::make_pair(checksum, matched_it->second));
-					if(offset == empty_block_it->first && chunksize == empty_block_it->second){     // Matched block fits perfectly in empty block
+					if(offset == empty_block_it->first && blocksize == empty_block_it->second){     // Matched block fits perfectly in empty block
 						empty_blocks.erase(empty_block_it++);
 					}else if(offset == empty_block_it->first){      // Matched block is in the beginning of empty block
-						empty_block_it->first += chunksize;
-						empty_block_it->second -= chunksize;
-					}else if(offset+chunksize == empty_block_it->first+empty_block_it->second){     // Matched block is in the end of empty block
-						empty_block_it->second -= chunksize;
+						empty_block_it->first += blocksize;
+						empty_block_it->second -= blocksize;
+					}else if(offset+blocksize == empty_block_it->first+empty_block_it->second){     // Matched block is in the end of empty block
+						empty_block_it->second -= blocksize;
 						empty_block_it++;
 					}else{  // Matched block is in the middle of empty block
 						auto prev_length = empty_block_it->second; auto next_it = empty_block_it;
 						empty_block_it->second = offset-empty_block_it->first;
-						empty_blocks.insert(++next_it, empty_block_t(offset+chunksize, empty_block_it->first+prev_length));
+						empty_blocks.insert(++next_it, empty_block_t(offset+blocksize, empty_block_it->first+prev_length));
 						empty_block_it++;
 					}
-					chunks_left.erase(matched_it);
+					blocks_left.erase(matched_it);
 					break;
 				}
 				if(offset != empty_block_it->first+empty_block_it->second){
@@ -172,7 +118,7 @@ FileMap FileMap::update(std::istream& datafile) {
 					offset++;
 				}else break;
 			}while(true);
-			if(matched_it == chunks_left.end()){
+			if(matched_it == blocks_left.end()){
 				empty_block_it++;
 			}
 		}
@@ -266,7 +212,7 @@ void FileMap::fill_with_map(std::istream& datafile, empty_block_t unassigned_spa
 
 #ifndef SINGLE_THREADED
 	// Threaded initialization
-	for(auto threadnum = 0; threadnum < std::max(std::thread::hardware_concurrency()-1, (unsigned int)1); threadnum++){
+	for(auto threadnum = 0; threadnum < (std::thread::hardware_concurrency() == 0 ? 0 : std::thread::hardware_concurrency()-1); threadnum++){
 		threads.emplace_back(std::bind(static_cast<size_t (boost::asio::io_service::*) ()>(&boost::asio::io_service::run), &io_service));
 	}
 #endif // SINGLE_THREADED
@@ -296,38 +242,6 @@ void FileMap::fill_with_map(std::istream& datafile, empty_block_t unassigned_spa
 	delete work;
 
 	io_service.run();
-
-	for(auto& thread : threads){
-		if(thread.joinable()) thread.join();
-	}
-}
-
-void FileMap::fill_with_map(const uint8_t* data, size_t size, empty_block_t unassigned_space) {
-	std::vector<std::thread> threads;
-
-	boost::asio::io_service io_service;
-	auto work = new boost::asio::io_service::work(io_service);
-
-	for(auto threadnum = 0; threadnum < std::max(std::thread::hardware_concurrency()-1, (unsigned int)1); threadnum++){
-		threads.emplace_back(std::bind(static_cast<size_t (boost::asio::io_service::*) ()>(&boost::asio::io_service::run), &io_service));
-	}
-
-	int blockcount = 0;
-	while(unassigned_space.second != 0){
-		size_t bytes_to_read = std::min(unassigned_space.second, maxblocksize);
-		io_service.post(std::bind([this](offset_t offset, size_t size, int block_count, const uint8_t* data){
-			std::shared_ptr<Block> processed_block = std::make_shared<Block>(process_block(data, size));
-
-			print_debug_block(*processed_block, ++block_count);
-
-			hashed_blocks.insert({processed_block->decrypted_hashes_part.weak_hash, processed_block});
-			offset_blocks.insert({offset, processed_block});
-		}, unassigned_space.first, bytes_to_read, ++blockcount, data));
-		unassigned_space.first += bytes_to_read;
-		unassigned_space.second -= bytes_to_read;
-	}
-
-	delete work;
 
 	for(auto& thread : threads){
 		if(thread.joinable()) thread.join();

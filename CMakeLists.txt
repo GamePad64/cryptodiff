@@ -3,6 +3,20 @@ cmake_minimum_required(VERSION 2.8)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
+#============================================================================
+# Compilation options
+#============================================================================
+
+#-- Add an Option to toggle the generation of the API documentation
+option(SINGLE_THREADED "Build single-threaded version of the library" OFF)
+if(SINGLE_THREADED)
+	add_definitions(-DSINGLE_THREADED)
+endif()
+
+#============================================================================
+# Compiler properties
+#============================================================================
+
 ### Setting compiler properties
 file(GLOB_RECURSE SRCS "src/*")
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
