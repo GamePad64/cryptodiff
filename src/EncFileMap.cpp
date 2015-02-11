@@ -21,6 +21,9 @@ void EncFileMap::from_file(std::istream& lvfile){
 	size = 0;
 	EncFileMap_s filemap_s; filemap_s.ParseFromIstream(&lvfile);
 
+	maxblocksize = filemap_s.maxblocksize();
+	minblocksize = filemap_s.minblocksize();
+
 	for(auto block_s : filemap_s.blocks()){
 		auto new_block = std::make_shared<Block>();
 		std::copy(block_s.encrypted_hash().begin(), block_s.encrypted_hash().end(), new_block->encrypted_hash.begin());

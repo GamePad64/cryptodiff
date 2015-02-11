@@ -28,12 +28,12 @@ protected:
 	Block process_block(const uint8_t* data, size_t size, const Botan::InitializationVector& iv);
 
 	//
+	std::shared_ptr<Block> create_block(std::istream& datafile, empty_block_t unassigned_space);
 	void fill_with_map(std::istream& datafile, empty_block_t unassigned_space);
-
 	void create_neighbormap(std::istream& datafile, std::shared_ptr<Block> left, std::shared_ptr<Block> right, empty_block_t unassigned_space);
 
 	// Subroutine for matching blockbuf with defined checksum and existing block signature from blockset.
-	decltype(hashed_blocks)::iterator match_block(const uint8_t* data, size_t size, decltype(hashed_blocks)& blockset, RsyncChecksum checksum);
+	decltype(hashed_blocks)::iterator match_block(const uint8_t* data, size_t size, decltype(hashed_blocks)& blockset, weakhash_t checksum);
 public:
 	FileMap(const Botan::SymmetricKey& key);
 	virtual ~FileMap();

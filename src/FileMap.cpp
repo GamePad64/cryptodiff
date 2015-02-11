@@ -31,7 +31,7 @@ Block FileMap::process_block(const uint8_t* data, size_t size,
 	return proc;
 }
 
-decltype(FileMap::hashed_blocks)::iterator FileMap::match_block(const uint8_t* data, size_t size, decltype(hashed_blocks)& blockset, RsyncChecksum checksum) {
+decltype(FileMap::hashed_blocks)::iterator FileMap::match_block(const uint8_t* data, size_t size, decltype(hashed_blocks)& blockset, weakhash_t checksum) {
 	auto eqhash_blocks = blockset.equal_range(checksum);
 	if(eqhash_blocks != std::make_pair(blockset.end(), blockset.end())){
 		for(auto eqhash_block = eqhash_blocks.first; eqhash_block != eqhash_blocks.second; eqhash_block++){
@@ -57,10 +57,12 @@ void FileMap::create(std::istream& datafile, uint32_t maxblocksize, uint32_t min
 
 FileMap FileMap::update(std::istream& datafile) {
 	FileMap upd(key); upd.size = filesize(datafile);
+	upd.maxblocksize = maxblocksize;
+	upd.minblocksize = minblocksize;
 
 	auto blocks_left = hashed_blocks;       // This will move into upd one by one.
 
-	// Create a set of block sizes, sorted in descending order with power of 2 values before other.
+	// Create a set of block sizes, sorted in descending order with power of 2 values before others.
 	struct greater_pow2_prio {
 		bool operator()(const uint32_t& lhs, const uint32_t& rhs){
 			bool pow2l = (lhs != 0) && ((lhs & (lhs - 1)) == 0);
@@ -135,6 +137,8 @@ FileMap FileMap::update(std::istream& datafile) {
 			--lb_block;
 			left_blk = lb_block->second;
 		}
+
+		upd.create_neighbormap(datafile, left_blk, right_blk, *empty_block_it);
 	}
 
 	return upd;
@@ -175,23 +179,35 @@ void FileMap::from_file(std::istream& lvfile) {
 	}
 }
 
+std::shared_ptr<Block> FileMap::create_block(std::istream& datafile, empty_block_t unassigned_space){
+	std::vector<char> rdbuf(size);
+
+	datafile.seekg(unassigned_space.first);
+	datafile.read(&*rdbuf.begin(), unassigned_space.second);
+
+	std::shared_ptr<Block> processed_block = std::make_shared<Block>(process_block((uint8_t*)rdbuf.data(), rdbuf.size()));
+
+	print_debug_block(*processed_block);
+
+	hashed_blocks.insert({processed_block->decrypted_hashes_part.weak_hash, processed_block});
+	offset_blocks.insert({unassigned_space.first, processed_block});
+	return processed_block;
+}
+
 void FileMap::create_neighbormap(std::istream& datafile,
 		std::shared_ptr<Block> left, std::shared_ptr<Block> right,
 		empty_block_t unassigned_space) {
-	std::string rdbuf;
 	if(!right && !left){
-		// Just create a map.
+		fill_with_map(datafile, unassigned_space);
 	}else if(!right){	// Append in the end.
-		while(unassigned_space != empty_block_t(0,0)){
-			if(left->blocksize < maxblocksize){
-				auto left_offset = unassigned_space.first-left->blocksize;
-				datafile.seekg(left_offset);
-				rdbuf.resize(maxblocksize);
-				datafile.read(&*rdbuf.begin(), std::min(maxblocksize, left->blocksize + unassigned_space.second));	// This shit is full of crap, amigo!
-				if(true){}
-			}
+		if(left->blocksize < maxblocksize){
+			unassigned_space.first -= left->blocksize;
+			unassigned_space.second += left->blocksize;
+			hashed_blocks.erase(left->decrypted_hashes_part.weak_hash);
+			offset_blocks.erase(unassigned_space.first);
 		}
-	}else if(!left){
+		fill_with_map(datafile, unassigned_space);
+	}else if(!left){	// Append in the beginning.
 
 	}
 	if(left->blocksize >= maxblocksize && right->blocksize >= maxblocksize){
@@ -204,6 +220,8 @@ void FileMap::create_neighbormap(std::istream& datafile,
 }
 
 void FileMap::fill_with_map(std::istream& datafile, empty_block_t unassigned_space) {
+	if(unassigned_space.second == 0) return;
+
 	boost::asio::io_service io_service;
 	auto work = new boost::asio::io_service::work(io_service);
 
@@ -223,10 +241,10 @@ void FileMap::fill_with_map(std::istream& datafile, empty_block_t unassigned_spa
 		io_service.post(std::bind([this](offset_t offset, size_t size, int block_count, std::mutex* datafile_lock, std::istream* file){
 			std::vector<char> rdbuf(size);
 
-			if(datafile_lock) datafile_lock->lock();
+			datafile_lock->lock();
 			file->seekg(offset);
 			file->read(&*rdbuf.begin(), size);
-			if(datafile_lock) datafile_lock->unlock();
+			datafile_lock->unlock();
 
 			std::shared_ptr<Block> processed_block = std::make_shared<Block>(process_block((uint8_t*)rdbuf.data(), rdbuf.size()));
 
