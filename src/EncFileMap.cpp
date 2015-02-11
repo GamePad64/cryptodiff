@@ -19,16 +19,18 @@ EncFileMap::~EncFileMap() {
 
 void EncFileMap::from_file(std::istream& lvfile){
 	size = 0;
-	do {
-		std::shared_ptr<Block> block = std::make_shared<Block>();
-		lvfile.read(reinterpret_cast<char*>(block.get()), sizeof(Block));
+	EncFileMap_s filemap_s; filemap_s.ParseFromIstream(&lvfile);
 
-		if(lvfile.gcount() == sizeof(Block)){
-			//hashed_blocks.insert(std::make_pair(block->encrypted.weak_hash, block));
-			offset_blocks.insert(std::make_pair(size, block));
-			size += block->blocksize;
-		}
-	} while(lvfile.good());
+	for(auto block_s : filemap_s.blocks()){
+		auto new_block = std::make_shared<Block>();
+		std::copy(block_s.encrypted_hash().begin(), block_s.encrypted_hash().end(), new_block->encrypted_hash.begin());
+		new_block->blocksize = block_s.blocksize();
+		std::copy(block_s.iv().begin(), block_s.iv().end(), new_block->iv.begin());
+		std::copy(block_s.encrypted_hashes().begin(), block_s.encrypted_hashes().end(), new_block->encrypted_hashes_part.begin());
+
+		offset_blocks.insert(make_pair(size, new_block));
+		size += block_s.blocksize();
+	}
 }
 
 void EncFileMap::to_file(std::ostream& lvfile){
@@ -47,13 +49,15 @@ void EncFileMap::to_file(std::ostream& lvfile){
 
 void EncFileMap::print_debug() const {
 	int i = 0;
-	for(auto chunk : offset_blocks){
-		std::cout << "#: " << ++i << " L: " << chunk.second->blocksize << std::endl;
-		std::cout << "SHA3(Enc): " << to_hex(chunk.second->encrypted_hash.data()) << std::endl;
-		std::cout << "IV: " << to_hex(chunk.second->iv.data()) << std::endl;
-
-		std::cout << "AES(Hashes(Block)): " << to_hex(chunk.second->encrypted_hashes_part.data()) << std::endl << std::endl;
-		//std::cout << "Rsync: " << to_hex(chunk.second->encrypted.weak_hash) << std::endl;
-		//std::cout << "SHA-3: " << to_hex(chunk.second->encrypted.strong_hash.data()) << std::endl;
+	for(auto block : offset_blocks){
+		print_debug_block(*(block.second), ++i);
 	}
+}
+
+void EncFileMap::print_debug_block(const Block& block, int count) const {
+	std::cout << "#: " << count << " L: " << block.blocksize << std::endl;
+	std::cout << "SHA3(Enc): " << to_hex(block.encrypted_hash.data(), SHASH_LENGTH) << std::endl;
+	std::cout << "IV: " << to_hex(block.iv.data(), AES_BLOCKSIZE) << std::endl;
+
+	std::cout << "AES(Hashes(Block)): " << to_hex(block.encrypted_hashes_part.data(), block.encrypted_hashes_part.size()) << std::endl << std::endl;
 }

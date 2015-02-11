@@ -38,17 +38,16 @@ struct Chunk {
 };	// 80 bytes.
 */
 
-class Block {
-public:
-	std::array<char, SHASH_LENGTH> encrypted_hash;	// 28 bytes
+struct Block {
+	std::array<uint8_t, SHASH_LENGTH> encrypted_hash;	// 28 bytes
 	uint32_t blocksize;	// 4 bytes
-	std::array<char, AES_BLOCKSIZE> iv;	// 16 bytes
+	std::array<uint8_t, AES_BLOCKSIZE> iv;	// 16 bytes
 
 	struct Hashes {
 		weakhash_t weak_hash;	// 4 bytes
-		std::array<char, SHASH_LENGTH> strong_hash;	// 28 bytes
+		std::array<uint8_t, SHASH_LENGTH> strong_hash;	// 28 bytes
 	};
-	std::array<char, sizeof(Hashes)> encrypted_hashes_part;
+	std::array<uint8_t, sizeof(Hashes)> encrypted_hashes_part;
 	Hashes decrypted_hashes_part;
 };
 
@@ -70,7 +69,8 @@ public:
 	virtual void from_file(std::istream& lvfile);
 	void to_file(std::ostream& lvfile);
 
-	virtual void print_debug() const;
+	void print_debug() const;
+	virtual void print_debug_block(const Block& block, int count = 0) const;
 };
 
 #endif /* SRC_ENCFILEMAP_H_ */

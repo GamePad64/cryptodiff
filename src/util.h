@@ -38,28 +38,34 @@ inline uint64_t filesize(std::ostream& ofile){
 	return size;
 }
 
-inline std::string encrypt(const std::string& data, Botan::SymmetricKey key, Botan::InitializationVector iv, bool nopad = false) {
+inline std::vector<uint8_t> encrypt(const uint8_t* data, size_t size, Botan::SymmetricKey key, Botan::InitializationVector iv, bool nopad = false) {
 	Botan::Pipe pipe(get_cipher(nopad ? "AES-256/CBC/NoPadding" : "AES-256/CBC", key, iv, Botan::ENCRYPTION));
-	pipe.process_msg(data);
+	pipe.process_msg(data, size);
+	auto processed_str = pipe.read_all_as_string(0);
 
-	return pipe.read_all_as_string(0);
+	return std::vector<uint8_t>(processed_str.begin(), processed_str.end());
 }
 
-inline std::string decrypt(const std::string& data, Botan::SymmetricKey key, Botan::InitializationVector iv, bool nopad = false) {
+inline std::vector<uint8_t> decrypt(const uint8_t* data, size_t size, Botan::SymmetricKey key, Botan::InitializationVector iv, bool nopad = false) {
 	Botan::Pipe pipe(get_cipher(nopad ? "AES-256/CBC/NoPadding" : "AES-256/CBC", key, iv, Botan::DECRYPTION));
-	pipe.process_msg(data);
+	pipe.process_msg(data, size);
+	auto processed_str = pipe.read_all_as_string(0);
 
-	return pipe.read_all_as_string(0);
+	return std::vector<uint8_t>(processed_str.begin(), processed_str.end());
 }
 
-inline std::string to_hex(const std::string& s){
+inline std::string to_hex(const uint8_t* data, size_t size){
 	Botan::Pipe pipe(new Botan::Hex_Encoder);
-	pipe.process_msg(s);
+	pipe.process_msg(data, size);
 
 	std::string hexdata(pipe.read_all_as_string(0));
 	boost::algorithm::to_lower(hexdata);
 
 	return hexdata;
+}
+
+inline std::string to_hex(const std::string& s){
+	return to_hex((uint8_t*)s.data(), s.size());
 }
 
 inline std::string to_hex(const uint32_t& s){
@@ -69,11 +75,12 @@ inline std::string to_hex(const uint32_t& s){
 	return ret.str();
 }
 
-inline std::array<char, SHASH_LENGTH> compute_shash(const char* data, size_t length) {
+inline std::array<uint8_t, SHASH_LENGTH> compute_shash(const uint8_t* data, size_t size) {
 	Botan::Keccak_1600 hasher(SHASH_LENGTH*8);
 
-	auto hash = hasher.process(reinterpret_cast<const uint8_t*>(data), length);
-	std::array<char, SHASH_LENGTH> hash_array; memcpy((void*)&hash_array, hash.data(), SHASH_LENGTH);
+	auto hash = hasher.process(data, size);
+	std::array<uint8_t, SHASH_LENGTH> hash_array;
+	std::move(hash.begin(), hash.end(), hash_array.begin());
 	return hash_array;
 }
 

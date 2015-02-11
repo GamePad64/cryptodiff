@@ -37,7 +37,7 @@ public:
 	template<class InputIterator> weakhash_t compute(InputIterator first, InputIterator last){
 		s1 = 0; s2 = 0; count = 0;
 		for(auto it = first; it != last; it++){
-			s1 += (reinterpret_cast<const uint8_t&>(*first) + char_offset);
+			s1 += (reinterpret_cast<const uint8_t&>(*it) + char_offset);
 			s2 += s1;
 			count++;
 		}
