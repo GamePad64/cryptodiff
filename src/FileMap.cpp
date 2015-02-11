@@ -12,6 +12,7 @@
 #include <boost/circular_buffer.hpp>
 #include <boost/asio.hpp>	//htonl, ntohl
 #include <list>
+#include <thread>
 
 Block FileMap::process_block(const uint8_t* data, size_t size,
 		const Botan::InitializationVector& iv) {
@@ -257,35 +258,37 @@ void FileMap::create_neighbormap(std::istream& datafile,
 }
 
 void FileMap::fill_with_map(std::istream& datafile, empty_block_t unassigned_space) {
-	offset_t offset;
-	std::vector<std::thread> threads;
-	std::mutex datafile_lock;
-
 	boost::asio::io_service io_service;
 	auto work = new boost::asio::io_service::work(io_service);
 
-	for(auto threadnum = 0; threadnum < std::max(std::thread::hardware_concurrency(), (unsigned int)1); threadnum++){
+	std::vector<std::thread> threads;
+	std::mutex datafile_lock;
+
+#ifndef SINGLE_THREADED
+	// Threaded initialization
+	for(auto threadnum = 0; threadnum < std::max(std::thread::hardware_concurrency()-1, (unsigned int)1); threadnum++){
 		threads.emplace_back(std::bind(static_cast<size_t (boost::asio::io_service::*) ()>(&boost::asio::io_service::run), &io_service));
 	}
+#endif // SINGLE_THREADED
 
-	int blockcount = 0;
+	int block_count = 0;
 	while(unassigned_space.second != 0){
 		size_t bytes_to_read = std::min(unassigned_space.second, maxblocksize);
 		io_service.post(std::bind([this](offset_t offset, size_t size, int block_count, std::mutex* datafile_lock, std::istream* file){
 			std::vector<char> rdbuf(size);
 
-			datafile_lock->lock();
+			if(datafile_lock) datafile_lock->lock();
 			file->seekg(offset);
 			file->read(&*rdbuf.begin(), size);
-			datafile_lock->unlock();
+			if(datafile_lock) datafile_lock->unlock();
 
 			std::shared_ptr<Block> processed_block = std::make_shared<Block>(process_block((uint8_t*)rdbuf.data(), rdbuf.size()));
 
-			print_debug_block(*processed_block, ++block_count);
+			print_debug_block(*processed_block, block_count);
 
 			hashed_blocks.insert({processed_block->decrypted_hashes_part.weak_hash, processed_block});
 			offset_blocks.insert({offset, processed_block});
-		}, unassigned_space.first, bytes_to_read, ++blockcount, &datafile_lock, &datafile));
+		}, unassigned_space.first, bytes_to_read, ++block_count, &datafile_lock, &datafile));
 		unassigned_space.first += bytes_to_read;
 		unassigned_space.second -= bytes_to_read;
 	}
@@ -299,14 +302,13 @@ void FileMap::fill_with_map(std::istream& datafile, empty_block_t unassigned_spa
 	}
 }
 
-void FileMap::fill_with_map_mmap(const uint8_t* data, size_t size, empty_block_t unassigned_space) {
-	offset_t offset;
+void FileMap::fill_with_map(const uint8_t* data, size_t size, empty_block_t unassigned_space) {
 	std::vector<std::thread> threads;
 
 	boost::asio::io_service io_service;
 	auto work = new boost::asio::io_service::work(io_service);
 
-	for(auto threadnum = 0; threadnum < std::max(std::thread::hardware_concurrency(), (unsigned int)1); threadnum++){
+	for(auto threadnum = 0; threadnum < std::max(std::thread::hardware_concurrency()-1, (unsigned int)1); threadnum++){
 		threads.emplace_back(std::bind(static_cast<size_t (boost::asio::io_service::*) ()>(&boost::asio::io_service::run), &io_service));
 	}
 
