@@ -13,19 +13,60 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+#include "FileMap.h"
+
 #include <botan/symkey.h>
 #include <botan/botan.h>
 #include <boost/iostreams/device/mapped_file.hpp>
 #include <boost/iostreams/stream.hpp>
+#include <boost/program_options.hpp>
 #include <iostream>
 #include <fstream>
 
-#include "FileMap.h"
-
 using namespace librevault;
+namespace po = boost::program_options;
 
 int main(int argc, char** argv){
 	Botan::LibraryInitializer init("thread_safe=true");
+
+	po::options_description hidden_grp("Action");
+	hidden_grp.add_options()
+			("action", po::value<std::string>())
+			("input", po::value<std::string>())
+			("output", po::value<std::string>());
+	po::options_description option_grp("Options");
+	option_grp.add_options()
+			("help,h", "Show this help message")
+			("version,V", "show program version");
+
+	po::positional_options_description positional;
+	positional.add("action", 1);
+	positional.add("input", 1);
+	positional.add("output", 1);
+
+	po::options_description visible; visible.add(option_grp);
+	po::options_description all; all.add(visible); all.add(hidden_grp);
+
+	po::variables_map vm;
+	try {
+		po::store(po::command_line_parser(argc, argv).options(all).positional(positional).run(), vm);
+		po::notify(vm);
+	}catch(const boost::program_options::error& e){
+		std::cerr << "Invalid syntax" << std::endl;
+		return 1;
+	}
+
+	if(vm.count("help")){
+		std::cout << visible;
+
+		return 0;
+	}
+
+	if(!vm.count("action")){
+		std::cerr << "You must specify an action: `create',`update',`delta',`read'";
+		return 1;
+	}
+
 
 	if(argc < 2){return 1;}
 
