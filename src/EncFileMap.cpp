@@ -1,13 +1,23 @@
-/*
- * EncFileMap.cpp
+/* Copyright (C) 2014-2015 Alexander Shishenko <GamePad64@gmail.com>
  *
- *  Created on: 04 февр. 2015 г.
- *      Author: gamepad
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-
 #include "EncFileMap.h"
 #include "EncFileMap.pb.h"
 #include <boost/range/adaptor/map.hpp>
+
+namespace librevault {
 
 EncFileMap::EncFileMap() {}
 EncFileMap::~EncFileMap() {}
@@ -72,3 +82,5 @@ void EncFileMap::print_debug_block(const Block& block, int count) const {
 
 	std::cout << "AES(Hashes(Block)): " << to_hex(block.encrypted_hashes_part.data(), block.encrypted_hashes_part.size()) << std::endl << std::endl;
 }
+
+} /* namespace librevault */

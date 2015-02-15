@@ -1,18 +1,27 @@
-/*
- * FileMap.cpp
+/* Copyright (C) 2014-2015 Alexander Shishenko <GamePad64@gmail.com>
  *
- *  Created on: 04 февр. 2015 г.
- *      Author: gamepad
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-
 #include "FileMap.h"
 
 #include "crypto/StatefulRsyncChecksum.h"
 #include <boost/log/trivial.hpp>
-#include <boost/circular_buffer.hpp>
-#include <boost/asio.hpp>	//htonl, ntohl
+#include <boost/asio.hpp>
 #include <list>
 #include <thread>
+
+namespace librevault {
 
 Block FileMap::process_block(const uint8_t* data, size_t size,
 		const Botan::InitializationVector& iv) {
@@ -267,3 +276,5 @@ void FileMap::print_debug_block(const Block& block, int count) const {
 	std::cout << "Rsync(Block): " << to_hex(block.decrypted_hashes_part.weak_hash) << std::endl;
 	std::cout << "SHA3(Block): " << to_hex(block.decrypted_hashes_part.strong_hash.data(), SHASH_LENGTH) << std::endl << std::endl;
 }
+
+} /* namespace librevault */

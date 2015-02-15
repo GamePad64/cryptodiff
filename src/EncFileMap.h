@@ -1,10 +1,19 @@
-/*
- * EncFileMap.h
+/* Copyright (C) 2014-2015 Alexander Shishenko <GamePad64@gmail.com>
  *
- *  Created on: 04 февр. 2015 г.
- *      Author: gamepad
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-
+#pragma once
 #ifndef SRC_ENCFILEMAP_H_
 #define SRC_ENCFILEMAP_H_
 
@@ -17,26 +26,10 @@
 #include <iostream>
 #include <memory>
 
+namespace librevault {
+
 constexpr size_t AES_BLOCKSIZE = 16;
 constexpr size_t AES_KEYSIZE = 32;
-/*
-struct Header {
-	const std::array<char, 4> magic = {'L', 'V', 'S', '\n'};
-	uint32_t maxblocksize;
-	uint32_t minblocksize;
-};	// 12 bytes
-struct Chunk {
-	struct Meta {
-		std::array<char, SHASH_LENGTH> encrypted_hash;	// 28 bytes
-		uint32_t blocksize;	// 4 bytes
-		std::array<char, AES_BLOCKSIZE> iv;	// 16 bytes
-	} meta;	// 48 bytes
-	struct Encrypted {
-		weakhash_t weak_hash;	// 4 bytes
-		std::array<char, SHASH_LENGTH> strong_hash;	// 28 bytes
-	} encrypted;	// 32 bytes = 2 AES blocks without padding
-};	// 80 bytes.
-*/
 
 struct Block {
 	std::array<uint8_t, SHASH_LENGTH> encrypted_hash;	// 28 bytes
@@ -74,5 +67,7 @@ public:
 	void print_debug() const;
 	virtual void print_debug_block(const Block& block, int count = 0) const;
 };
+
+} /* namespace librevault */
 
 #endif /* SRC_ENCFILEMAP_H_ */
