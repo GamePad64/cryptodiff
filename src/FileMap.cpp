@@ -207,16 +207,9 @@ void FileMap::create_neighbormap(std::istream& datafile,
 			offset_blocks.erase(unassigned_space.first);
 		}
 		fill_with_map(datafile, unassigned_space);
-	}else if(!left){	// Append in the beginning.
-
+	}else{	// FIXME: Dirty hack. We need some more logic here.
+		fill_with_map(datafile, unassigned_space);
 	}
-	if(left->blocksize >= maxblocksize && right->blocksize >= maxblocksize){
-		// So, neighbor blocks are full and we have at least full new block, so
-		// any redundant byte count, that is less than minblocksize would split
-		// the new block in 2 smaller blocks.
-
-	}
-
 }
 
 void FileMap::fill_with_map(std::istream& datafile, empty_block_t unassigned_space) {
