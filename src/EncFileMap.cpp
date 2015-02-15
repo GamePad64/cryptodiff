@@ -7,14 +7,22 @@
 
 #include "EncFileMap.h"
 #include "EncFileMap.pb.h"
+#include <boost/range/adaptor/map.hpp>
 
-EncFileMap::EncFileMap() {
-	// TODO Auto-generated constructor stub
+EncFileMap::EncFileMap() {}
+EncFileMap::~EncFileMap() {}
 
-}
+std::list<std::shared_ptr<const Block>> EncFileMap::delta(const EncFileMap& old_filemap){
+	auto strong_hash_less = [](const decltype(offset_blocks | boost::adaptors::map_values)::value_type &block1, const decltype(offset_blocks | boost::adaptors::map_values)::value_type &block2){
+		return block1->encrypted_hash < block2->encrypted_hash;
+	};
 
-EncFileMap::~EncFileMap() {
-	// TODO Auto-generated destructor stub
+	std::list<std::shared_ptr<const Block>> missing_blocks;
+	std::set_difference(
+			(offset_blocks | boost::adaptors::map_values).begin(), (offset_blocks | boost::adaptors::map_values).end(),
+			(old_filemap.offset_blocks | boost::adaptors::map_values).begin(), (old_filemap.offset_blocks | boost::adaptors::map_values).end(),
+			std::back_inserter(missing_blocks), strong_hash_less);
+	return missing_blocks;
 }
 
 void EncFileMap::from_file(std::istream& lvfile){

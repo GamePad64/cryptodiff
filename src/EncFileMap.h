@@ -66,6 +66,8 @@ public:
 	EncFileMap();
 	virtual ~EncFileMap();
 
+	std::list<std::shared_ptr<const Block>> delta(const EncFileMap& old_filemap);
+
 	virtual void from_file(std::istream& lvfile);
 	void to_file(std::ostream& lvfile);
 
