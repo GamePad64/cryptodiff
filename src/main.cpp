@@ -57,5 +57,19 @@ int main(int argc, char** argv){
 		filemap_old.from_file(mapfile_old);
 		FileMap filemap_new = filemap_old.update(datafile);
 		filemap_new.to_file(mapfile_new);
-	}
+	}else if(strcmp(argv[1], "delta") == 0){	// also known as rechunk
+			std::ifstream mapfile_old(argv[2]);
+			std::ifstream mapfile_new(argv[3]);
+
+			EncFileMap filemap_old;
+			EncFileMap filemap_new;
+			filemap_old.from_file(mapfile_old);
+			filemap_new.from_file(mapfile_new);
+
+			auto missing_blocks = filemap_new.delta(filemap_old);
+			auto i = 0;
+			for(auto block : missing_blocks){
+				filemap_new.print_debug_block(*block, ++i);
+			}
+		}
 }
