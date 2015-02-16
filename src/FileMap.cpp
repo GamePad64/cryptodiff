@@ -31,6 +31,7 @@ Block FileMap::process_block(const uint8_t* data, size_t size,
 
 	auto encrypted_block = encrypt(data, size, key, iv, proc.blocksize % AES_BLOCKSIZE == 0 ? true : false);
 	proc.encrypted_hash = compute_shash(encrypted_block.data(), encrypted_block.size());
+	proc.decrypted_hmac = compute_hmac(data, size, key);
 
 	proc.decrypted_hashes_part.strong_hash = compute_shash(data, size);
 	proc.decrypted_hashes_part.weak_hash = RsyncChecksum(data, data+size);
@@ -271,6 +272,7 @@ void FileMap::fill_with_map(std::istream& datafile, empty_block_t unassigned_spa
 void FileMap::print_debug_block(const Block& block, int count) const {
 	std::cout << "#: " << count << " L: " << block.blocksize << std::endl;
 	std::cout << "SHA3(Enc): " << to_hex(block.encrypted_hash.data(), SHASH_LENGTH) << std::endl;
+	std::cout << "HMAC(Block): " << to_hex(block.decrypted_hmac.data(), SHASH_LENGTH) << std::endl;
 	std::cout << "IV: " << to_hex(block.iv.data(), AES_BLOCKSIZE) << std::endl;
 
 	std::cout << "Rsync(Block): " << to_hex(block.decrypted_hashes_part.weak_hash) << std::endl;

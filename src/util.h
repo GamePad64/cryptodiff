@@ -18,6 +18,7 @@
 
 #include <botan/botan.h>
 #include <botan/keccak.h>
+#include <botan/hmac.h>
 #include <botan/aes.h>
 
 #include <boost/algorithm/string.hpp>
@@ -90,6 +91,17 @@ inline std::array<uint8_t, SHASH_LENGTH> compute_shash(const uint8_t* data, size
 	std::array<uint8_t, SHASH_LENGTH> hash_array;
 	std::move(hash.begin(), hash.end(), hash_array.begin());
 	return hash_array;
+}
+
+inline std::array<uint8_t, SHASH_LENGTH> compute_hmac(const uint8_t* data, size_t size, const Botan::SymmetricKey& key){
+	Botan::HMAC macer(new Botan::Keccak_1600(SHASH_LENGTH*8));
+
+	macer.set_key(key);
+
+	auto hmac = macer.process(data, size);
+	std::array<uint8_t, SHASH_LENGTH> hmac_array;
+	std::move(hmac.begin(), hmac.end(), hmac_array.begin());
+	return hmac_array;
 }
 
 #endif /* SRC_UTIL_H_ */

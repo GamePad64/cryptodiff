@@ -33,6 +33,8 @@ constexpr size_t AES_KEYSIZE = 32;
 
 struct Block {
 	std::array<uint8_t, SHASH_LENGTH> encrypted_hash;	// 28 bytes
+	std::array<uint8_t, SHASH_LENGTH> decrypted_hmac;
+
 	uint32_t blocksize;	// 4 bytes
 	std::array<uint8_t, AES_BLOCKSIZE> iv;	// 16 bytes
 
