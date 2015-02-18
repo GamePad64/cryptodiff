@@ -17,7 +17,8 @@
 #include "EncFileMap.pb.h"
 #include <boost/range/adaptor/map.hpp>
 
-namespace librevault {
+namespace filemap {
+namespace internals {
 
 EncFileMap::EncFileMap() {}
 EncFileMap::~EncFileMap() {}
@@ -83,4 +84,5 @@ void EncFileMap::print_debug_block(const Block& block, int count) const {
 	std::cout << "AES(Hashes(Block)): " << to_hex(block.encrypted_hashes_part.data(), block.encrypted_hashes_part.size()) << std::endl << std::endl;
 }
 
+} /* namespace internals */
 } /* namespace librevault */

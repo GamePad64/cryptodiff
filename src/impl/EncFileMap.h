@@ -26,7 +26,8 @@
 #include <iostream>
 #include <memory>
 
-namespace librevault {
+namespace filemap {
+namespace internals {
 
 constexpr size_t AES_BLOCKSIZE = 16;
 constexpr size_t AES_KEYSIZE = 32;
@@ -66,8 +67,13 @@ public:
 
 	void print_debug() const;
 	virtual void print_debug_block(const Block& block, int count = 0) const;
+
+	// Getters
+	uint32_t get_maxblocksize() const {return maxblocksize;}
+	uint32_t get_minblocksize() const {return minblocksize;}
 };
 
+} /* namespace internals */
 } /* namespace librevault */
 
 #endif /* SRC_ENCFILEMAP_H_ */

@@ -20,9 +20,9 @@
 #include <iostream>
 #include <fstream>
 
-#include "FileMap.h"
+#include "src/FileMap.h"
 
-using namespace librevault;
+using namespace filemap;
 
 int main(int argc, char** argv){
 	Botan::LibraryInitializer init("thread_safe=true");
@@ -33,7 +33,9 @@ int main(int argc, char** argv){
 		std::ifstream datafile(argv[2]);
 		std::ofstream mapfile(argv[3]);
 
-		FileMap filemap(Botan::SymmetricKey(reinterpret_cast<uint8_t*>(argv[4]), AES_KEYSIZE));
+		std::array<uint8_t, 32> key;
+		std::copy((uint8_t*)argv[4], (uint8_t*)argv[4]+32, key.data());
+		FileMap filemap(key);
 		filemap.create(datafile);
 		filemap.to_file(mapfile);
 	}else if(strcmp(argv[1], "read") == 0){
@@ -41,7 +43,9 @@ int main(int argc, char** argv){
 
 		std::unique_ptr<EncFileMap> filemap;
 		if(argc == 4){
-			filemap = std::unique_ptr<EncFileMap>(new FileMap(Botan::SymmetricKey(reinterpret_cast<uint8_t*>(argv[3]), AES_KEYSIZE)));
+			std::array<uint8_t, 32> key;
+			std::copy((uint8_t*)argv[3], (uint8_t*)argv[3]+32, key.data());
+			filemap = std::unique_ptr<EncFileMap>(new FileMap(key));
 		}else{
 			filemap = std::unique_ptr<EncFileMap>(new EncFileMap());
 		}
@@ -53,23 +57,26 @@ int main(int argc, char** argv){
 		std::ifstream mapfile_old(argv[3]);
 		std::ofstream mapfile_new(argv[4]);
 
-		FileMap filemap_old(Botan::secure_vector<uint8_t>(argv[5], argv[5]+AES_KEYSIZE));
+		std::array<uint8_t, 32> key;
+		std::copy((uint8_t*)argv[4], (uint8_t*)argv[4]+32, key.data());
+
+		FileMap filemap_old(key);
 		filemap_old.from_file(mapfile_old);
 		FileMap filemap_new = filemap_old.update(datafile);
 		filemap_new.to_file(mapfile_new);
 	}else if(strcmp(argv[1], "delta") == 0){	// also known as rechunk
-			std::ifstream mapfile_old(argv[2]);
-			std::ifstream mapfile_new(argv[3]);
+		std::ifstream mapfile_old(argv[2]);
+		std::ifstream mapfile_new(argv[3]);
 
-			EncFileMap filemap_old;
-			EncFileMap filemap_new;
-			filemap_old.from_file(mapfile_old);
-			filemap_new.from_file(mapfile_new);
+		EncFileMap filemap_old;
+		EncFileMap filemap_new;
+		filemap_old.from_file(mapfile_old);
+		filemap_new.from_file(mapfile_new);
 
-			auto missing_blocks = filemap_new.delta(filemap_old);
-			auto i = 0;
-			for(auto block : missing_blocks){
-				filemap_new.print_debug_block(*block, ++i);
-			}
+		auto missing_blocks = filemap_new.delta(filemap_old);
+		auto i = 0;
+		for(auto block : missing_blocks){
+			filemap_new.print_debug_block(block, ++i);
 		}
+	}
 }

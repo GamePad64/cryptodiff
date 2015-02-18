@@ -1,4 +1,4 @@
-project(revaultd)
+project(cryptodiff)
 cmake_minimum_required(VERSION 2.8)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
@@ -18,11 +18,9 @@ endif()
 #============================================================================
 
 ### Setting compiler properties
-file(GLOB_RECURSE SRCS "src/*")
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -fPIC")
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
-SET(CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE} -pg -g")
-SET(CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} -pg -g")
+SET(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fPIC")
 
 IF("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
 # Use -flto flag to enable GCC's link-time optimization.
@@ -43,11 +41,19 @@ find_package(Protobuf REQUIRED)
 if(PROTOBUF_FOUND)
   file(GLOB_RECURSE PROTO_COMMON_LIST "src/*.proto")
   PROTOBUF_GENERATE_CPP(PROTO_COMMON_SOURCES PROTO_COMMON_HEADERS ${PROTO_COMMON_LIST})
-  list(APPEND SRCS ${PROTO_COMMON_SOURCES})
-  list(APPEND SRCS ${PROTO_COMMON_HEADERS})
 endif()
 
-add_executable(${PROJECT_NAME} ${SRCS})
+#============================================================================
+# Binary generation
+#============================================================================
+
+file(GLOB_RECURSE LIBRARY_SRCS "src/*")
+list(APPEND LIBRARY_SRCS ${PROTO_COMMON_SOURCES})
+list(APPEND LIBRARY_SRCS ${PROTO_COMMON_HEADERS})
+add_library(${PROJECT_NAME}1 ${LIBRARY_SRCS})
+
+add_executable(${PROJECT_NAME} src/FileMap.h cryptodiff.cpp)
+target_link_libraries(${PROJECT_NAME} ${PROJECT_NAME}1)
 
 #============================================================================
 # Third-party Libraries
@@ -62,7 +68,7 @@ set (Boost_COMPONENTS
 	program_options
 	iostreams)
 
-set (Boost_USE_STATIC_LIBS ON)
+# set (Boost_USE_STATIC_LIBS ON)
 set (Boost_USE_MULTITHREADED ON)
 
 find_package(Boost COMPONENTS ${Boost_COMPONENTS} REQUIRED)

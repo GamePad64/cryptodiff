@@ -14,47 +14,101 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #pragma once
-#ifndef SRC_FILEMAP_H_
-#define SRC_FILEMAP_H_
+#ifndef FILEMAP_H_
+#define FILEMAP_H_
 
-#include "EncFileMap.h"
-#include <unordered_map>
+#if BUILDING_FILEMAP && defined _MSC_VER
+#define FILEMAP_DLL_EXPORTED __declspec(dllexport)
+#elif BUILDING_FILEMAP
+#define FILEMAP_DLL_EXPORTED __attribute__((__visibility__("default")))
+#elif defined _MSC_VER
+#define FILEMAP_DLL_EXPORTED __declspec(dllimport)
+#else
+#define FILEMAP_DLL_EXPORTED
+#endif
 
-namespace librevault {
+#include <cstdint>
+#include <iostream>
+#include <array>
+#include <vector>
 
-class FileMap: public EncFileMap {
-protected:
-	using empty_block_t = std::pair<offset_t, uint32_t>;    // offset, length.
+namespace filemap {
 
-	std::unordered_multimap<weakhash_t, std::shared_ptr<Block>> hashed_blocks;
+constexpr size_t SHASH_LENGTH = 28;
+constexpr size_t AES_BLOCKSIZE = 16;
+constexpr size_t AES_KEYSIZE = 32;
 
-	Botan::SymmetricKey key;
-
-	// Encrypt
-	Block::Hashes decrypt_hashes(const std::array<uint8_t, sizeof(Block::Hashes)>& encrypted_hashes, const Botan::InitializationVector& iv, const Botan::SymmetricKey& key);
-	std::array<uint8_t, sizeof(Block::Hashes)> encrypt_hashes(Block::Hashes decrypted_hashes, const Botan::InitializationVector& iv, const Botan::SymmetricKey& key);
-
-	// Subroutines for creating block signature
-	Block process_block(const uint8_t* data, size_t size){Botan::AutoSeeded_RNG rng; auto iv = rng.random_vec(AES_BLOCKSIZE); return process_block(data, size, iv);};
-	Block process_block(const uint8_t* data, size_t size, const Botan::InitializationVector& iv);
-
-	//
-	std::shared_ptr<Block> create_block(std::istream& datafile, empty_block_t unassigned_space);
-	void fill_with_map(std::istream& datafile, empty_block_t unassigned_space);
-	void create_neighbormap(std::istream& datafile, std::shared_ptr<Block> left, std::shared_ptr<Block> right, empty_block_t unassigned_space);
-
-	// Subroutine for matching blockbuf with defined checksum and existing block signature from blockset.
-	decltype(hashed_blocks)::iterator match_block(const uint8_t* data, size_t size, decltype(hashed_blocks)& blockset, weakhash_t checksum);
+class FILEMAP_DLL_EXPORTED Block {
+	void* pImpl;
 public:
-	FileMap(const Botan::SymmetricKey& key);
+	Block();
+	Block(const Block& block);
+	Block(Block&& block);
+	Block& operator=(const Block& block);
+	Block& operator=(Block&& block);
+	~Block();
+
+	struct Hashes {
+		uint32_t weak_hash;	// 4 bytes
+		std::array<uint8_t, SHASH_LENGTH> strong_hash;	// 28 bytes
+	};
+
+	const std::array<uint8_t, SHASH_LENGTH>& get_encrypted_hash() const;
+	void set_encrypted_hash(const std::array<uint8_t, SHASH_LENGTH>& encrypted_hash);
+
+	uint32_t get_blocksize() const;
+	void set_blocksize(uint32_t blocksize);
+
+	const std::array<uint8_t, AES_BLOCKSIZE>& get_iv() const;
+	void set_iv(const std::array<uint8_t, AES_BLOCKSIZE>& iv);
+
+	uint32_t get_decrypted_weak_hash() const;
+	void set_decrypted_weak_hash(uint32_t decrypted_weak_hash);
+	const std::array<uint8_t, SHASH_LENGTH>& get_decrypted_strong_hash() const;
+	void set_decrypted_strong_hash(const std::array<uint8_t, SHASH_LENGTH>& decrypted_weak_hash);
+
+	const std::array<uint8_t, sizeof(Hashes)>& get_encrypted_hashes_part() const;
+	void set_encrypted_hashes_part(const std::array<uint8_t, sizeof(Hashes)>& encrypted_hashes_part);
+
+	/* implementation */
+	inline void* get_implementation(){return pImpl;}
+};
+
+class FILEMAP_DLL_EXPORTED EncFileMap {
+protected:
+	void* pImpl;
+public:
+	EncFileMap();
+	EncFileMap(const EncFileMap& encfilemap);
+	EncFileMap(EncFileMap&& encfilemap);
+	EncFileMap& operator=(const EncFileMap& encfilemap);
+	EncFileMap& operator=(EncFileMap&& encfilemap);
+	virtual ~EncFileMap();
+
+	std::vector<Block> delta(const EncFileMap& old_filemap);
+
+	virtual void from_file(std::istream& lvfile);
+	void to_file(std::ostream& lvfile);
+
+	void print_debug() const;
+	virtual void print_debug_block(const Block& block, int count = 0) const;
+
+	uint32_t get_maxblocksize() const;
+	uint32_t get_minblocksize() const;
+
+	/* implementation */
+	inline void* get_implementation(){return pImpl;}
+};
+
+class FILEMAP_DLL_EXPORTED FileMap : public EncFileMap {
+protected:
+	FileMap();
+public:
+	FileMap(const std::array<uint8_t, AES_KEYSIZE>& key);
 	virtual ~FileMap();
 
 	void create(std::istream& datafile, uint32_t maxblocksize = 2*1024*1024, uint32_t minblocksize = 32 * 1024);
 	FileMap update(std::istream& datafile);
-
-	virtual void from_file(std::istream& lvfile);
-
-	virtual void print_debug_block(const Block& block, int count = 0) const;
 };
 
 } /* namespace librevault */

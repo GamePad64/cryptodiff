@@ -14,7 +14,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 syntax = "proto2";
-package librevault;
+package filemap.internals;
 
 message EncFileMap_s {
 	optional uint32 maxblocksize = 2;
