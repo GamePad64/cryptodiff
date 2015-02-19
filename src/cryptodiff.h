@@ -14,17 +14,17 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #pragma once
-#ifndef FILEMAP_H_
-#define FILEMAP_H_
+#ifndef CRYPTODIFF_H_
+#define CRYPTODIFF_H_
 
-#if BUILDING_FILEMAP && defined _MSC_VER
-#define FILEMAP_DLL_EXPORTED __declspec(dllexport)
+#if BUILDING_CRYPTODIFF && defined _MSC_VER
+#define CRYPTODIFF_DLL_EXPORTED __declspec(dllexport)
 #elif BUILDING_FILEMAP
-#define FILEMAP_DLL_EXPORTED __attribute__((__visibility__("default")))
+#define CRYPTODIFF_DLL_EXPORTED __attribute__((__visibility__("default")))
 #elif defined _MSC_VER
-#define FILEMAP_DLL_EXPORTED __declspec(dllimport)
+#define CRYPTODIFF_DLL_EXPORTED __declspec(dllimport)
 #else
-#define FILEMAP_DLL_EXPORTED
+#define CRYPTODIFF_DLL_EXPORTED
 #endif
 
 #include <cstdint>
@@ -32,13 +32,13 @@
 #include <array>
 #include <vector>
 
-namespace filemap {
+namespace cryptodiff {
 
 constexpr size_t SHASH_LENGTH = 28;
 constexpr size_t AES_BLOCKSIZE = 16;
 constexpr size_t AES_KEYSIZE = 32;
 
-class FILEMAP_DLL_EXPORTED Block {
+class CRYPTODIFF_DLL_EXPORTED Block {
 	void* pImpl;
 public:
 	Block();
@@ -74,7 +74,7 @@ public:
 	inline void* get_implementation(){return pImpl;}
 };
 
-class FILEMAP_DLL_EXPORTED EncFileMap {
+class CRYPTODIFF_DLL_EXPORTED EncFileMap {
 protected:
 	void* pImpl;
 public:
@@ -87,20 +87,24 @@ public:
 
 	std::vector<Block> delta(const EncFileMap& old_filemap);
 
-	virtual void from_file(std::istream& lvfile);
+	void from_string(const std::string& serialized_str);
+	std::string to_string() const;
+
+	void from_file(std::istream& lvfile);
 	void to_file(std::ostream& lvfile);
 
 	void print_debug() const;
-	virtual void print_debug_block(const Block& block, int count = 0) const;
+	void print_debug_block(const Block& block, int count = 0) const;
 
 	uint32_t get_maxblocksize() const;
 	uint32_t get_minblocksize() const;
+	uint32_t get_filesize() const;
 
 	/* implementation */
 	inline void* get_implementation(){return pImpl;}
 };
 
-class FILEMAP_DLL_EXPORTED FileMap : public EncFileMap {
+class CRYPTODIFF_DLL_EXPORTED FileMap : public EncFileMap {
 protected:
 	FileMap();
 public:
@@ -111,6 +115,6 @@ public:
 	FileMap update(std::istream& datafile);
 };
 
-} /* namespace librevault */
+} /* namespace filemap */
 
-#endif /* SRC_FILEMAP_H_ */
+#endif /* CRYPTODIFF_H_ */

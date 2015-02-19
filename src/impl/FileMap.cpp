@@ -21,7 +21,7 @@
 #include <list>
 #include <thread>
 
-namespace filemap {
+namespace cryptodiff {
 namespace internals {
 
 Block FileMap::process_block(const uint8_t* data, size_t size,
@@ -179,8 +179,8 @@ std::array<uint8_t, sizeof(Block::Hashes)> FileMap::encrypt_hashes(
 	return enc_array;
 }
 
-void FileMap::from_file(std::istream& lvfile) {
-	EncFileMap::from_file(lvfile);
+void FileMap::from_protobuf(const EncFileMap_s& filemap_s) {
+	EncFileMap::from_protobuf(filemap_s);
 	for(auto block : offset_blocks){
 		block.second->decrypted_hashes_part = decrypt_hashes(
 				block.second->encrypted_hashes_part,

@@ -13,11 +13,11 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include "FileMap.h"
 #include "impl/EncFileMap.h"
 #include "impl/FileMap.h"
+#include "cryptodiff.h"
 
-namespace filemap {
+namespace cryptodiff {
 
 /* Block */
 Block::Block(){
@@ -116,6 +116,13 @@ std::vector<Block> EncFileMap::delta(const EncFileMap& old_filemap){
 	return delta_vec;
 }
 
+void EncFileMap::from_string(const std::string& serialized_str){
+	reinterpret_cast<internals::EncFileMap*>(pImpl)->from_string(serialized_str);
+}
+std::string EncFileMap::to_string() const {
+	return reinterpret_cast<internals::EncFileMap*>(pImpl)->to_string();
+}
+
 void EncFileMap::from_file(std::istream& lvfile){
 	reinterpret_cast<internals::EncFileMap*>(pImpl)->from_file(lvfile);
 }
@@ -135,6 +142,9 @@ uint32_t EncFileMap::get_maxblocksize() const {
 }
 uint32_t EncFileMap::get_minblocksize() const {
 	return reinterpret_cast<internals::EncFileMap*>(pImpl)->get_minblocksize();
+}
+uint32_t EncFileMap::get_filesize() const {
+	return reinterpret_cast<internals::EncFileMap*>(pImpl)->get_filesize();
 }
 
 /* FileMap */

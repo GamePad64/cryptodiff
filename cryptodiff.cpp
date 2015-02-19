@@ -13,6 +13,8 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+#include "src/cryptodiff.h"
+
 #include <botan/symkey.h>
 #include <botan/botan.h>
 #include <boost/iostreams/device/mapped_file.hpp>
@@ -20,9 +22,8 @@
 #include <iostream>
 #include <fstream>
 
-#include "src/FileMap.h"
 
-using namespace filemap;
+using namespace cryptodiff;
 
 int main(int argc, char** argv){
 	Botan::LibraryInitializer init("thread_safe=true");

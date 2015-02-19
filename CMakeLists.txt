@@ -52,7 +52,7 @@ list(APPEND LIBRARY_SRCS ${PROTO_COMMON_SOURCES})
 list(APPEND LIBRARY_SRCS ${PROTO_COMMON_HEADERS})
 add_library(${PROJECT_NAME}1 ${LIBRARY_SRCS})
 
-add_executable(${PROJECT_NAME} src/FileMap.h cryptodiff.cpp)
+add_executable(${PROJECT_NAME} src/cryptodiff.h cryptodiff.cpp)
 target_link_libraries(${PROJECT_NAME} ${PROJECT_NAME}1)
 
 #============================================================================

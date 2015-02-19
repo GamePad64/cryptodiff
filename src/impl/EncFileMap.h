@@ -19,6 +19,7 @@
 
 #include "util.h"
 #include "crypto/RsyncChecksum.h"
+#include "EncFileMap.pb.h"
 #include <string>
 #include <map>
 #include <array>
@@ -26,7 +27,7 @@
 #include <iostream>
 #include <memory>
 
-namespace filemap {
+namespace cryptodiff {
 namespace internals {
 
 constexpr size_t AES_BLOCKSIZE = 16;
@@ -62,7 +63,13 @@ public:
 
 	std::list<std::shared_ptr<const Block>> delta(const EncFileMap& old_filemap);
 
-	virtual void from_file(std::istream& lvfile);
+	virtual void from_protobuf(const EncFileMap_s& filemap_s);
+	EncFileMap_s to_protobuf() const;
+
+	void from_string(const std::string& serialized_str);
+	std::string to_string() const;
+
+	void from_file(std::istream& lvfile);
 	void to_file(std::ostream& lvfile);
 
 	void print_debug() const;
@@ -71,6 +78,8 @@ public:
 	// Getters
 	uint32_t get_maxblocksize() const {return maxblocksize;}
 	uint32_t get_minblocksize() const {return minblocksize;}
+
+	uint32_t get_filesize() const {return size;}
 };
 
 } /* namespace internals */

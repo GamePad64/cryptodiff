@@ -14,10 +14,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "EncFileMap.h"
-#include "EncFileMap.pb.h"
 #include <boost/range/adaptor/map.hpp>
 
-namespace filemap {
+namespace cryptodiff {
 namespace internals {
 
 EncFileMap::EncFileMap() {}
@@ -36,10 +35,8 @@ std::list<std::shared_ptr<const Block>> EncFileMap::delta(const EncFileMap& old_
 	return missing_blocks;
 }
 
-void EncFileMap::from_file(std::istream& lvfile){
+void EncFileMap::from_protobuf(const EncFileMap_s& filemap_s) {
 	size = 0;
-	EncFileMap_s filemap_s; filemap_s.ParseFromIstream(&lvfile);
-
 	maxblocksize = filemap_s.maxblocksize();
 	minblocksize = filemap_s.minblocksize();
 
@@ -55,7 +52,7 @@ void EncFileMap::from_file(std::istream& lvfile){
 	}
 }
 
-void EncFileMap::to_file(std::ostream& lvfile){
+EncFileMap_s EncFileMap::to_protobuf() const {
 	EncFileMap_s serialized_map;
 	serialized_map.set_maxblocksize(maxblocksize);
 	serialized_map.set_minblocksize(minblocksize);
@@ -66,7 +63,27 @@ void EncFileMap::to_file(std::ostream& lvfile){
 		new_block->set_iv(block.second->iv.data(), block.second->iv.size());
 		new_block->set_encrypted_hashes(block.second->encrypted_hashes_part.data(), block.second->encrypted_hashes_part.size());
 	}
-	serialized_map.SerializeToOstream(&lvfile);
+	return serialized_map;
+}
+
+void EncFileMap::from_string(const std::string& serialized_str) {
+	EncFileMap_s filemap_s; filemap_s.ParseFromString(serialized_str);
+	from_protobuf(filemap_s);
+}
+
+std::string EncFileMap::to_string() const {
+	std::string filemap_str;
+	to_protobuf().SerializeToString(&filemap_str);
+	return filemap_str;
+}
+
+void EncFileMap::from_file(std::istream& lvfile){
+	EncFileMap_s filemap_s; filemap_s.ParseFromIstream(&lvfile);
+	from_protobuf(filemap_s);
+}
+
+void EncFileMap::to_file(std::ostream& lvfile){
+	to_protobuf().SerializeToOstream(&lvfile);
 }
 
 void EncFileMap::print_debug() const {

@@ -20,7 +20,7 @@
 #include "EncFileMap.h"
 #include <unordered_map>
 
-namespace filemap {
+namespace cryptodiff {
 namespace internals {
 
 class FileMap: public EncFileMap {
@@ -54,7 +54,7 @@ public:
 	void create(std::istream& datafile, uint32_t maxblocksize = 2*1024*1024, uint32_t minblocksize = 32 * 1024);
 	FileMap update(std::istream& datafile);
 
-	virtual void from_file(std::istream& lvfile);
+	virtual void from_protobuf(const EncFileMap_s& filemap_s);
 
 	virtual void print_debug_block(const Block& block, int count = 0) const;
 };
