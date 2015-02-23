@@ -1,7 +1,9 @@
 project(cryptodiff)
 cmake_minimum_required(VERSION 2.8)
-
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
+
+SET(TARGET_LIBRARY_NAME "libcryptodiff")
+SET(TARGET_EXECUTABLE_NAME "cryptodiff")
 
 #============================================================================
 # Compilation options
@@ -44,16 +46,27 @@ if(PROTOBUF_FOUND)
 endif()
 
 #============================================================================
-# Binary generation
+# Binary generation and installation
 #============================================================================
 
 file(GLOB_RECURSE LIBRARY_SRCS "src/*")
 list(APPEND LIBRARY_SRCS ${PROTO_COMMON_SOURCES})
 list(APPEND LIBRARY_SRCS ${PROTO_COMMON_HEADERS})
-add_library(${PROJECT_NAME}1 ${LIBRARY_SRCS})
+add_library(${TARGET_LIBRARY_NAME} ${LIBRARY_SRCS})
 
-add_executable(${PROJECT_NAME} src/cryptodiff.h cryptodiff.cpp)
-target_link_libraries(${PROJECT_NAME} ${PROJECT_NAME}1)
+SET_TARGET_PROPERTIES (${TARGET_LIBRARY_NAME}
+  PROPERTIES
+  VERSION 0.0.1
+  SOVERSION 0
+  OUTPUT_NAME cryptodiff
+)
+
+add_executable(${TARGET_EXECUTABLE_NAME} src/cryptodiff.h cryptodiff.cpp)
+target_link_libraries(${TARGET_EXECUTABLE_NAME} ${TARGET_LIBRARY_NAME})
+
+install (TARGETS ${TARGET_LIBRARY_NAME} DESTINATION lib)
+install (TARGETS ${TARGET_EXECUTABLE_NAME} DESTINATION bin)
+install (FILES src/cryptodiff.h DESTINATION include)
 
 #============================================================================
 # Third-party Libraries
@@ -75,7 +88,8 @@ find_package(Boost COMPONENTS ${Boost_COMPONENTS} REQUIRED)
 
 if(Boost_FOUND)
   include_directories(${Boost_INCLUDE_DIRS})
-  target_link_libraries(${PROJECT_NAME} ${Boost_LIBRARIES})
+  target_link_libraries(${TARGET_LIBRARY_NAME} ${Boost_LIBRARIES})
+  target_link_libraries(${TARGET_EXECUTABLE_NAME} ${Boost_LIBRARIES})
 endif()
 # /Boost
 
@@ -84,7 +98,8 @@ find_package(Botan REQUIRED)
 
 if(BOTAN_FOUND)
   include_directories(${BOTAN_INCLUDE_DIRS})
-  target_link_libraries(${PROJECT_NAME} ${BOTAN_LIBRARIES})
+  target_link_libraries(${TARGET_LIBRARY_NAME} ${BOTAN_LIBRARIES})
+  target_link_libraries(${TARGET_EXECUTABLE_NAME} ${BOTAN_LIBRARIES})
 endif()
 # /Botan
 
@@ -93,7 +108,8 @@ endif()
 
 if(PROTOBUF_FOUND)
   include_directories(${PROTOBUF_INCLUDE_DIRS})
-  target_link_libraries(${PROJECT_NAME} ${PROTOBUF_LIBRARIES})
+  target_link_libraries(${TARGET_LIBRARY_NAME} ${PROTOBUF_LIBRARIES})
+  target_link_libraries(${TARGET_EXECUTABLE_NAME} ${PROTOBUF_LIBRARIES})
 endif()
 # /Protobuf
 
