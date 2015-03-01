@@ -15,8 +15,6 @@
  */
 #include "src/cryptodiff.h"
 
-#include <botan/symkey.h>
-#include <botan/botan.h>
 #include <boost/iostreams/device/mapped_file.hpp>
 #include <boost/iostreams/stream.hpp>
 #include <iostream>
@@ -26,8 +24,6 @@
 using namespace cryptodiff;
 
 int main(int argc, char** argv){
-	Botan::LibraryInitializer init("thread_safe=true");
-
 	if(argc < 2){return 1;}
 
 	if(strcmp(argv[1], "create") == 0){

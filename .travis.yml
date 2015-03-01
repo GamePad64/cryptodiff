@@ -10,8 +10,10 @@ install:
   - sudo apt-get install libboost1.55 g++-4.9 gcc-4.9 build-essential libgtest-dev protobuf-compiler libprotobuf-dev
   - sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.9 80 --slave /usr/bin/g++ g++ /usr/bin/g++-4.9
   - 
-  - wget -O botan-1.11_amd64.deb https://dl.dropboxusercontent.com/u/2310050/p2pnet/botan-1.11_amd64.deb
-  - sudo dpkg -i botan-1.11_amd64.deb
+  - wget -O cryptopp.zip http://www.cryptopp.com/cryptopp562.zip
+  - unzip cryptopp.zip -d cryptopp
+  - cd cryptopp
+  - make && sudo make install
 script:
   - cmake .
   - make

@@ -19,6 +19,7 @@
 
 #include "EncFileMap.h"
 #include <unordered_map>
+#include <cryptopp/osrng.h>
 
 namespace cryptodiff {
 namespace internals {
@@ -29,15 +30,19 @@ protected:
 
 	std::unordered_multimap<weakhash_t, std::shared_ptr<Block>> hashed_blocks;
 
-	Botan::SymmetricKey key;
+	key_t key;
 
 	// Encrypt
-	Block::Hashes decrypt_hashes(const std::array<uint8_t, sizeof(Block::Hashes)>& encrypted_hashes, const Botan::InitializationVector& iv, const Botan::SymmetricKey& key);
-	std::array<uint8_t, sizeof(Block::Hashes)> encrypt_hashes(Block::Hashes decrypted_hashes, const Botan::InitializationVector& iv, const Botan::SymmetricKey& key);
+	Block::Hashes decrypt_hashes(const std::array<uint8_t, sizeof(Block::Hashes)>& encrypted_hashes, const iv_t& iv, const key_t& key);
+	std::array<uint8_t, sizeof(Block::Hashes)> encrypt_hashes(Block::Hashes decrypted_hashes, const iv_t& iv, const key_t& key);
 
 	// Subroutines for creating block signature
-	Block process_block(const uint8_t* data, size_t size){Botan::AutoSeeded_RNG rng; auto iv = rng.random_vec(AES_BLOCKSIZE); return process_block(data, size, iv);};
-	Block process_block(const uint8_t* data, size_t size, const Botan::InitializationVector& iv);
+	Block process_block(const uint8_t* data, size_t size){
+		CryptoPP::AutoSeededRandomPool rng;
+		iv_t iv; rng.GenerateBlock(iv.data(), AES_BLOCKSIZE);
+		return process_block(data, size, iv);
+	};
+	Block process_block(const uint8_t* data, size_t size, const iv_t& iv);
 
 	//
 	std::shared_ptr<Block> create_block(std::istream& datafile, empty_block_t unassigned_space);
@@ -47,8 +52,7 @@ protected:
 	// Subroutine for matching blockbuf with defined checksum and existing block signature from blockset.
 	decltype(hashed_blocks)::iterator match_block(const uint8_t* data, size_t size, decltype(hashed_blocks)& blockset, weakhash_t checksum);
 public:
-	FileMap(const Botan::SymmetricKey& key);
-	FileMap(const std::array<uint8_t, AES_KEYSIZE>& key);
+	FileMap(const key_t& key);
 	virtual ~FileMap();
 
 	void create(std::istream& datafile, uint32_t maxblocksize = 2*1024*1024, uint32_t minblocksize = 32 * 1024);

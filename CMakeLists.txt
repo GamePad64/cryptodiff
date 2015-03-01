@@ -93,15 +93,15 @@ if(Boost_FOUND)
 endif()
 # /Boost
 
-# Botan
-find_package(Botan REQUIRED)
+# CryptoPP
+find_package(CryptoPP REQUIRED)
 
-if(BOTAN_FOUND)
-  include_directories(${BOTAN_INCLUDE_DIRS})
-  target_link_libraries(${TARGET_LIBRARY_NAME} ${BOTAN_LIBRARIES})
-  target_link_libraries(${TARGET_EXECUTABLE_NAME} ${BOTAN_LIBRARIES})
+if(CRYPTOPP_FOUND)
+  include_directories(${CRYPTOPP_INCLUDE_DIRS})
+  target_link_libraries(${TARGET_LIBRARY_NAME} ${CRYPTOPP_LIBRARIES})
+  target_link_libraries(${TARGET_EXECUTABLE_NAME} ${CRYPTOPP_LIBRARIES})
 endif()
-# /Botan
+# /CryptoPP
 
 # Protobuf
 # Found lately

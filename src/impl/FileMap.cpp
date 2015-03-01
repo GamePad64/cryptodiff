@@ -20,15 +20,17 @@
 #include <boost/asio.hpp>
 #include <list>
 #include <thread>
+#include <set>
+#include <mutex>
 
 namespace cryptodiff {
 namespace internals {
 
 Block FileMap::process_block(const uint8_t* data, size_t size,
-		const Botan::InitializationVector& iv) {
+		const iv_t& iv) {
 	Block proc;
 	proc.blocksize = size;
-	auto iv_bits = iv.bits_of(); std::move(iv_bits.begin(), iv_bits.end(), proc.iv.begin());
+	proc.iv = iv;
 
 	auto encrypted_block = encrypt(data, size, key, iv, proc.blocksize % AES_BLOCKSIZE == 0 ? true : false);
 	proc.encrypted_hash = compute_shash(encrypted_block.data(), encrypted_block.size());
@@ -54,8 +56,7 @@ decltype(FileMap::hashed_blocks)::iterator FileMap::match_block(const uint8_t* d
 	return hashed_blocks.end();
 }
 
-FileMap::FileMap(const Botan::SymmetricKey& key) : key(key) {}
-FileMap::FileMap(const std::array<uint8_t, AES_KEYSIZE>& key) : key(Botan::SymmetricKey(key.data(), key.size())) {}
+FileMap::FileMap(const key_t& key) : key(key) {}
 FileMap::~FileMap() {}
 
 void FileMap::create(std::istream& datafile, uint32_t maxblocksize, uint32_t minblocksize) {
@@ -157,7 +158,7 @@ FileMap FileMap::update(std::istream& datafile) {
 
 Block::Hashes FileMap::decrypt_hashes(
 		const std::array<uint8_t, sizeof(Block::Hashes)>& encrypted_hashes,
-		const Botan::InitializationVector& iv, const Botan::SymmetricKey& key) {
+		const iv_t& iv, const key_t& key) {
 	Block::Hashes decrypted_hashes;
 	auto decrypted_vector = decrypt(encrypted_hashes.data(), encrypted_hashes.size(), key, iv, true);
 
@@ -169,7 +170,7 @@ Block::Hashes FileMap::decrypt_hashes(
 
 std::array<uint8_t, sizeof(Block::Hashes)> FileMap::encrypt_hashes(
 		Block::Hashes decrypted_hashes,
-		const Botan::InitializationVector& iv, const Botan::SymmetricKey& key) {
+		const iv_t& iv, const key_t& key) {
 	decrypted_hashes.weak_hash = htonl(decrypted_hashes.weak_hash);
 	auto encrypted_vector = encrypt(reinterpret_cast<uint8_t*>(&decrypted_hashes), sizeof(Block::Hashes), key, iv, true);
 
@@ -183,9 +184,7 @@ void FileMap::from_protobuf(const EncFileMap_s& filemap_s) {
 	EncFileMap::from_protobuf(filemap_s);
 	for(auto block : offset_blocks){
 		block.second->decrypted_hashes_part = decrypt_hashes(
-				block.second->encrypted_hashes_part,
-				Botan::InitializationVector(reinterpret_cast<const uint8_t*>(block.second->iv.data()), block.second->iv.size()),
-				key);
+				block.second->encrypted_hashes_part, block.second->iv, key);
 		hashed_blocks.insert(std::make_pair(block.second->decrypted_hashes_part.weak_hash, block.second));
 	}
 }
