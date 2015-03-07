@@ -85,6 +85,7 @@ public:
 	EncFileMap& operator=(EncFileMap&& encfilemap);
 	virtual ~EncFileMap();
 
+	std::vector<Block> blocks() const;
 	std::vector<Block> delta(const EncFileMap& old_filemap);
 
 	void from_string(const std::string& serialized_str);

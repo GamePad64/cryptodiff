@@ -106,6 +106,16 @@ EncFileMap::~EncFileMap(){
 	delete reinterpret_cast<internals::EncFileMap*>(pImpl);
 }
 
+std::vector<Block> EncFileMap::blocks() const {
+	auto blocks_ptrlist = reinterpret_cast<internals::EncFileMap*>(pImpl)->blocks();
+	std::vector<Block> blocks_vec; blocks_vec.reserve(blocks_ptrlist.size());
+	for(auto block_ptr : blocks_ptrlist){
+		Block b; *reinterpret_cast<internals::Block*>(b.get_implementation()) = *block_ptr.get();
+		blocks_vec.push_back(b);
+	}
+	return blocks_vec;
+}
+
 std::vector<Block> EncFileMap::delta(const EncFileMap& old_filemap){
 	auto delta_ptrlist = reinterpret_cast<internals::EncFileMap*>(pImpl)->delta(*reinterpret_cast<internals::EncFileMap*>(old_filemap.pImpl));
 	std::vector<Block> delta_vec; delta_vec.reserve(delta_ptrlist.size());

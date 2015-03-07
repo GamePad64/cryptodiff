@@ -22,6 +22,13 @@ namespace internals {
 EncFileMap::EncFileMap() {}
 EncFileMap::~EncFileMap() {}
 
+std::list<std::shared_ptr<const Block>> EncFileMap::blocks() const {
+	std::list<std::shared_ptr<const Block>> blist;
+	auto map_values = offset_blocks | boost::adaptors::map_values;
+	std::copy(map_values.begin(), map_values.end(), std::back_inserter(blist));
+	return blist;
+}
+
 std::list<std::shared_ptr<const Block>> EncFileMap::delta(const EncFileMap& old_filemap){
 	auto strong_hash_less = [](const decltype(offset_blocks | boost::adaptors::map_values)::value_type &block1, const decltype(offset_blocks | boost::adaptors::map_values)::value_type &block2){
 		return block1->encrypted_hash < block2->encrypted_hash;

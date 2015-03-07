@@ -58,6 +58,7 @@ public:
 	EncFileMap();
 	virtual ~EncFileMap();
 
+	std::list<std::shared_ptr<const Block>> blocks() const;
 	std::list<std::shared_ptr<const Block>> delta(const EncFileMap& old_filemap);
 
 	virtual void from_protobuf(const EncFileMap_s& filemap_s);
