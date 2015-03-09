@@ -71,7 +71,7 @@ public:
 	void to_file(std::ostream& lvfile);
 
 	void print_debug() const;
-	virtual void print_debug_block(const Block& block, int count = 0) const;
+	virtual void print_debug_block(const Block& block, int num = 0) const;
 
 	// Getters
 	uint32_t get_maxblocksize() const {return maxblocksize;}

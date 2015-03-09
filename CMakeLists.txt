@@ -84,6 +84,7 @@ set (Boost_COMPONENTS
 # set (Boost_USE_STATIC_LIBS ON)
 set (Boost_USE_MULTITHREADED ON)
 
+add_definitions(-DBOOST_LOG_DYN_LINK)
 find_package(Boost COMPONENTS ${Boost_COMPONENTS} REQUIRED)
 
 if(Boost_FOUND)

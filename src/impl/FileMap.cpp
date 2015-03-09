@@ -269,13 +269,14 @@ void FileMap::fill_with_map(std::istream& datafile, empty_block_t unassigned_spa
 	}
 }
 
-void FileMap::print_debug_block(const Block& block, int count) const {
-	std::cout << "#: " << count << " L: " << block.blocksize << std::endl;
-	std::cout << "SHA3(Enc): " << to_hex(block.encrypted_hash.data(), SHASH_LENGTH) << std::endl;
-	std::cout << "IV: " << to_hex(block.iv.data(), AES_BLOCKSIZE) << std::endl;
+void FileMap::print_debug_block(const Block& block, int num) const {
+	BOOST_LOG_TRIVIAL(debug) << "N=" << num
+			<< " Size=" << block.blocksize
+			<< " SHA3(Enc)=" << to_hex(block.encrypted_hash.data(), SHASH_LENGTH)
+			<< " IV=" << to_hex(block.iv.data(), AES_BLOCKSIZE)
 
-	std::cout << "Rsync(Block): " << to_hex(block.decrypted_hashes_part.weak_hash) << std::endl;
-	std::cout << "SHA3(Block): " << to_hex(block.decrypted_hashes_part.strong_hash.data(), SHASH_LENGTH) << std::endl << std::endl;
+			<< " Rsync(Block)=" << to_hex(block.decrypted_hashes_part.weak_hash)
+			<< " SHA3(Block)=" << to_hex(block.decrypted_hashes_part.strong_hash.data(), SHASH_LENGTH);
 }
 
 } /* namespace internals */

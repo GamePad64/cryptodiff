@@ -60,7 +60,7 @@ public:
 
 	virtual void from_protobuf(const EncFileMap_s& filemap_s);
 
-	virtual void print_debug_block(const Block& block, int count = 0) const;
+	virtual void print_debug_block(const Block& block, int num = 0) const;
 };
 
 } /* namespace internals */

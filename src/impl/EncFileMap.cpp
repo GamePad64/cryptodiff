@@ -15,6 +15,7 @@
  */
 #include "EncFileMap.h"
 #include <boost/range/adaptor/map.hpp>
+#include <boost/log/trivial.hpp>
 
 namespace cryptodiff {
 namespace internals {
@@ -100,12 +101,13 @@ void EncFileMap::print_debug() const {
 	}
 }
 
-void EncFileMap::print_debug_block(const Block& block, int count) const {
-	std::cout << "#: " << count << " L: " << block.blocksize << std::endl;
-	std::cout << "SHA3(Enc): " << to_hex(block.encrypted_hash.data(), SHASH_LENGTH) << std::endl;
-	std::cout << "IV: " << to_hex(block.iv.data(), AES_BLOCKSIZE) << std::endl;
+void EncFileMap::print_debug_block(const Block& block, int num) const {
+	BOOST_LOG_TRIVIAL(debug) << "N=" << num
+			<< " Size=" << block.blocksize
+			<< " SHA3(Enc)=" << to_hex(block.encrypted_hash.data(), SHASH_LENGTH)
+			<< " IV=" << to_hex(block.iv.data(), AES_BLOCKSIZE)
 
-	std::cout << "AES(Hashes(Block)): " << to_hex(block.encrypted_hashes_part.data(), block.encrypted_hashes_part.size()) << std::endl << std::endl;
+			<< " AES(Hashes(Block))=" << to_hex(block.encrypted_hashes_part.data(), block.encrypted_hashes_part.size());
 }
 
 } /* namespace internals */
