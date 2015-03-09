@@ -38,6 +38,10 @@ constexpr size_t SHASH_LENGTH = 28;
 constexpr size_t AES_BLOCKSIZE = 16;
 constexpr size_t AES_KEYSIZE = 32;
 
+using shash_t = std::array<uint8_t, SHASH_LENGTH>;
+using iv_t = std::array<uint8_t, AES_BLOCKSIZE>;
+using key_t = std::array<uint8_t, AES_KEYSIZE>;
+
 class CRYPTODIFF_DLL_EXPORTED Block {
 	void* pImpl;
 public:
@@ -50,22 +54,22 @@ public:
 
 	struct Hashes {
 		uint32_t weak_hash;	// 4 bytes
-		std::array<uint8_t, SHASH_LENGTH> strong_hash;	// 28 bytes
+		shash_t strong_hash;	// 28 bytes
 	};
 
-	const std::array<uint8_t, SHASH_LENGTH>& get_encrypted_hash() const;
-	void set_encrypted_hash(const std::array<uint8_t, SHASH_LENGTH>& encrypted_hash);
+	const shash_t& get_encrypted_hash() const;
+	void set_encrypted_hash(const shash_t& encrypted_hash);
 
 	uint32_t get_blocksize() const;
 	void set_blocksize(uint32_t blocksize);
 
-	const std::array<uint8_t, AES_BLOCKSIZE>& get_iv() const;
-	void set_iv(const std::array<uint8_t, AES_BLOCKSIZE>& iv);
+	const iv_t& get_iv() const;
+	void set_iv(const iv_t& iv);
 
 	uint32_t get_decrypted_weak_hash() const;
 	void set_decrypted_weak_hash(uint32_t decrypted_weak_hash);
-	const std::array<uint8_t, SHASH_LENGTH>& get_decrypted_strong_hash() const;
-	void set_decrypted_strong_hash(const std::array<uint8_t, SHASH_LENGTH>& decrypted_weak_hash);
+	const shash_t& get_decrypted_strong_hash() const;
+	void set_decrypted_strong_hash(const shash_t& decrypted_weak_hash);
 
 	const std::array<uint8_t, sizeof(Hashes)>& get_encrypted_hashes_part() const;
 	void set_encrypted_hashes_part(const std::array<uint8_t, sizeof(Hashes)>& encrypted_hashes_part);
@@ -99,7 +103,7 @@ public:
 
 	uint32_t get_maxblocksize() const;
 	uint32_t get_minblocksize() const;
-	uint32_t get_filesize() const;
+	uint64_t get_filesize() const;
 
 	/* implementation */
 	inline void* get_implementation(){return pImpl;}
@@ -109,7 +113,7 @@ class CRYPTODIFF_DLL_EXPORTED FileMap : public EncFileMap {
 protected:
 	FileMap();
 public:
-	FileMap(const std::array<uint8_t, AES_KEYSIZE>& key);
+	FileMap(const key_t& key);
 	virtual ~FileMap();
 
 	void create(std::istream& datafile, uint32_t maxblocksize = 2*1024*1024, uint32_t minblocksize = 32 * 1024);

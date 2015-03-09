@@ -77,7 +77,7 @@ public:
 	uint32_t get_maxblocksize() const {return maxblocksize;}
 	uint32_t get_minblocksize() const {return minblocksize;}
 
-	uint32_t get_filesize() const {return size;}
+	uint64_t get_filesize() const {return size;}
 };
 
 } /* namespace internals */

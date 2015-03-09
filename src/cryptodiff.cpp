@@ -153,7 +153,7 @@ uint32_t EncFileMap::get_maxblocksize() const {
 uint32_t EncFileMap::get_minblocksize() const {
 	return reinterpret_cast<internals::EncFileMap*>(pImpl)->get_minblocksize();
 }
-uint32_t EncFileMap::get_filesize() const {
+uint64_t EncFileMap::get_filesize() const {
 	return reinterpret_cast<internals::EncFileMap*>(pImpl)->get_filesize();
 }
 
