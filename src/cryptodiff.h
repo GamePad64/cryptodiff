@@ -92,6 +92,8 @@ public:
 	std::vector<Block> blocks() const;
 	std::vector<Block> delta(const EncFileMap& old_filemap);
 
+	void from_array(const uint8_t* data, size_t size);
+
 	void from_string(const std::string& serialized_str);
 	std::string to_string() const;
 

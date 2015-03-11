@@ -121,6 +121,6 @@ inline std::array<uint8_t, SHASH_LENGTH> compute_shash(const uint8_t* data, size
 }
 
 } /* namespace internals */
-} /* namespace librevault */
+} /* namespace cryptodiff */
 
 #endif /* SRC_UTIL_H_ */

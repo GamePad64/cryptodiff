@@ -74,6 +74,11 @@ EncFileMap_s EncFileMap::to_protobuf() const {
 	return serialized_map;
 }
 
+void EncFileMap::from_array(const uint8_t* data, size_t size){
+	EncFileMap_s filemap_s; filemap_s.ParseFromArray(data, size);
+	from_protobuf(filemap_s);
+}
+
 void EncFileMap::from_string(const std::string& serialized_str) {
 	EncFileMap_s filemap_s; filemap_s.ParseFromString(serialized_str);
 	from_protobuf(filemap_s);

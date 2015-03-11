@@ -64,6 +64,8 @@ public:
 	virtual void from_protobuf(const EncFileMap_s& filemap_s);
 	EncFileMap_s to_protobuf() const;
 
+	void from_array(const uint8_t* data, size_t size);
+
 	void from_string(const std::string& serialized_str);
 	std::string to_string() const;
 

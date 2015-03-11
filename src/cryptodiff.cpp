@@ -126,6 +126,9 @@ std::vector<Block> EncFileMap::delta(const EncFileMap& old_filemap){
 	return delta_vec;
 }
 
+void EncFileMap::from_array(const uint8_t* data, size_t size){
+	reinterpret_cast<internals::EncFileMap*>(pImpl)->from_array(data, size);
+}
 void EncFileMap::from_string(const std::string& serialized_str){
 	reinterpret_cast<internals::EncFileMap*>(pImpl)->from_string(serialized_str);
 }
