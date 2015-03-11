@@ -24,7 +24,7 @@ Block::Block(){
 	pImpl = new internals::Block();
 }
 Block::Block(const Block& block){
-	pImpl = new internals::Block(*reinterpret_cast<internals::Block*>(pImpl));
+	pImpl = new internals::Block(*reinterpret_cast<internals::Block*>(block.pImpl));
 }
 Block::Block(Block&& block){
 	std::swap(pImpl, block.pImpl);
