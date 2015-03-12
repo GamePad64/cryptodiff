@@ -38,7 +38,7 @@ Block FileMap::process_block(const uint8_t* data, size_t size,
 	proc.decrypted_hashes_part.strong_hash = compute_shash(data, size);
 	proc.decrypted_hashes_part.weak_hash = RsyncChecksum(data, data+size);
 
-	proc.encrypted_hashes_part = encrypt_hashes(proc.decrypted_hashes_part, iv, key);
+	proc.encrypt_hashes(key);
 
 	return proc;
 }
@@ -156,35 +156,10 @@ FileMap FileMap::update(std::istream& datafile) {
 	return upd;
 }
 
-Block::Hashes FileMap::decrypt_hashes(
-		const std::array<uint8_t, sizeof(Block::Hashes)>& encrypted_hashes,
-		const iv_t& iv, const key_t& key) {
-	Block::Hashes decrypted_hashes;
-	auto decrypted_vector = decrypt(encrypted_hashes.data(), encrypted_hashes.size(), key, iv, true);
-
-	std::move(decrypted_vector.begin(), decrypted_vector.end(), (uint8_t*)&decrypted_hashes);
-	decrypted_hashes.weak_hash = ntohl(decrypted_hashes.weak_hash);
-
-	return decrypted_hashes;
-}
-
-std::array<uint8_t, sizeof(Block::Hashes)> FileMap::encrypt_hashes(
-		Block::Hashes decrypted_hashes,
-		const iv_t& iv, const key_t& key) {
-	decrypted_hashes.weak_hash = htonl(decrypted_hashes.weak_hash);
-	auto encrypted_vector = encrypt(reinterpret_cast<uint8_t*>(&decrypted_hashes), sizeof(Block::Hashes), key, iv, true);
-
-	std::array<uint8_t, sizeof(Block::Hashes)> enc_array;
-	std::move(encrypted_vector.begin(), encrypted_vector.end(), enc_array.begin());
-
-	return enc_array;
-}
-
 void FileMap::from_protobuf(const EncFileMap_s& filemap_s) {
 	EncFileMap::from_protobuf(filemap_s);
 	for(auto block : offset_blocks){
-		block.second->decrypted_hashes_part = decrypt_hashes(
-				block.second->encrypted_hashes_part, block.second->iv, key);
+		block.second->decrypt_hashes(key);
 		hashed_blocks.insert(std::make_pair(block.second->decrypted_hashes_part.weak_hash, block.second));
 	}
 }

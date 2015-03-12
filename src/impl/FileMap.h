@@ -32,10 +32,6 @@ protected:
 
 	key_t key;
 
-	// Encrypt
-	Block::Hashes decrypt_hashes(const std::array<uint8_t, sizeof(Block::Hashes)>& encrypted_hashes, const iv_t& iv, const key_t& key);
-	std::array<uint8_t, sizeof(Block::Hashes)> encrypt_hashes(Block::Hashes decrypted_hashes, const iv_t& iv, const key_t& key);
-
 	// Subroutines for creating block signature
 	Block process_block(const uint8_t* data, size_t size){
 		CryptoPP::AutoSeededRandomPool rng;

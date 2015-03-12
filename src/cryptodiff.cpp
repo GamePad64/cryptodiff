@@ -42,6 +42,13 @@ Block::~Block(){
 	delete reinterpret_cast<internals::Block*>(pImpl);
 }
 
+void Block::encrypt_hashes(const key_t& key){
+	reinterpret_cast<internals::Block*>(pImpl)->encrypt_hashes(key);
+}
+void Block::decrypt_hashes(const key_t& key){
+	reinterpret_cast<internals::Block*>(pImpl)->decrypt_hashes(key);
+}
+
 const std::array<uint8_t, SHASH_LENGTH>& Block::get_encrypted_hash() const {
 	return reinterpret_cast<internals::Block*>(pImpl)->encrypted_hash;
 }

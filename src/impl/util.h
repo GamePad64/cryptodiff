@@ -61,7 +61,7 @@ inline std::vector<uint8_t> encrypt(const uint8_t* data, size_t size, std::array
 	CryptoPP::CBC_Mode<CryptoPP::AES>::Encryption encryptor;
 	encryptor.SetKeyWithIV(key.data(), key.size(), iv.data());
 
-	std::vector<uint8_t> ciphertext( size - (size % AES_BLOCKSIZE) + AES_BLOCKSIZE );
+	std::vector<uint8_t> ciphertext( size - (size % AES_BLOCKSIZE) + (nopad ? 0 : AES_BLOCKSIZE) );
 	CryptoPP::StringSource str_source(data, size, true,
 			new CryptoPP::StreamTransformationFilter(encryptor,
 					new CryptoPP::ArraySink(ciphertext.data(), ciphertext.size()),

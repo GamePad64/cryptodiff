@@ -16,9 +16,26 @@
 #include "EncFileMap.h"
 #include <boost/range/adaptor/map.hpp>
 #include <boost/log/trivial.hpp>
+#include <boost/asio.hpp>	// For htonl, ntohl
 
 namespace cryptodiff {
 namespace internals {
+
+void Block::encrypt_hashes(const key_t& key){
+	Hashes temp_hashes;
+	temp_hashes.weak_hash = htonl(decrypted_hashes_part.weak_hash);
+	temp_hashes.strong_hash = decrypted_hashes_part.strong_hash;
+	auto encrypted_vector = encrypt(reinterpret_cast<uint8_t*>(&temp_hashes), sizeof(Block::Hashes), key, iv, true);
+
+	std::move(encrypted_vector.begin(), encrypted_vector.end(), encrypted_hashes_part.begin());
+}
+
+void Block::decrypt_hashes(const key_t& key){
+	auto decrypted_vector = decrypt(encrypted_hashes_part.data(), encrypted_hashes_part.size(), key, iv, true);
+
+	std::move(decrypted_vector.begin(), decrypted_vector.end(), (uint8_t*)&decrypted_hashes_part);
+	decrypted_hashes_part.weak_hash = ntohl(decrypted_hashes_part.weak_hash);
+}
 
 EncFileMap::EncFileMap() {}
 EncFileMap::~EncFileMap() {}

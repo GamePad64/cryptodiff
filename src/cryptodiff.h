@@ -57,6 +57,10 @@ public:
 		shash_t strong_hash;	// 28 bytes
 	};
 
+	void encrypt_hashes(const key_t& key);
+	void decrypt_hashes(const key_t& key);
+
+	// Getters & setters
 	const shash_t& get_encrypted_hash() const;
 	void set_encrypted_hash(const shash_t& encrypted_hash);
 

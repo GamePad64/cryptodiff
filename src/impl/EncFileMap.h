@@ -41,6 +41,9 @@ struct Block {
 	};
 	std::array<uint8_t, sizeof(Hashes)> encrypted_hashes_part;
 	Hashes decrypted_hashes_part;
+
+	void encrypt_hashes(const key_t& key);
+	void decrypt_hashes(const key_t& key);
 };
 
 class EncFileMap {
