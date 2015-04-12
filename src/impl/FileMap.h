@@ -24,21 +24,24 @@
 namespace cryptodiff {
 namespace internals {
 
-class FileMap: public EncFileMap {
+class FileMap : public EncFileMap {
 protected:
 	using empty_block_t = std::pair<offset_t, uint32_t>;    // offset, length.
 
 	std::unordered_multimap<weakhash_t, std::shared_ptr<Block>> hashed_blocks;
 
-	key_t key;
+	Key key;
+
+	// Generic subroutines
+	uint64_t filesize(std::istream& ifile);
 
 	// Subroutines for creating block signature
 	Block process_block(const uint8_t* data, size_t size){
 		CryptoPP::AutoSeededRandomPool rng;
-		iv_t iv; rng.GenerateBlock(iv.data(), AES_BLOCKSIZE);
+		IV iv; rng.GenerateBlock(iv.data(), AES_BLOCKSIZE);
 		return process_block(data, size, iv);
 	};
-	Block process_block(const uint8_t* data, size_t size, const iv_t& iv);
+	Block process_block(const uint8_t* data, size_t size, const IV& iv);
 
 	//
 	std::shared_ptr<Block> create_block(std::istream& datafile, empty_block_t unassigned_space);
@@ -48,7 +51,7 @@ protected:
 	// Subroutine for matching blockbuf with defined checksum and existing block signature from blockset.
 	decltype(hashed_blocks)::iterator match_block(const uint8_t* data, size_t size, decltype(hashed_blocks)& blockset, weakhash_t checksum);
 public:
-	FileMap(const key_t& key);
+	FileMap(const Key& key);
 	virtual ~FileMap();
 
 	void create(std::istream& datafile, uint32_t maxblocksize = 2*1024*1024, uint32_t minblocksize = 32 * 1024);

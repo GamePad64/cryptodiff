@@ -17,33 +17,37 @@
 #ifndef SRC_ENCFILEMAP_H_
 #define SRC_ENCFILEMAP_H_
 
-#include "util.h"
 #include "crypto/RsyncChecksum.h"
 #include "EncFileMap.pb.h"
 #include <string>
+#include <list>
 #include <map>
 #include <array>
 #include <cstdint>
 #include <iostream>
 #include <memory>
 
+#include "crypto/wrappers/cryptowrappers.h"
+
 namespace cryptodiff {
 namespace internals {
 
+using namespace crypto;
+
 struct Block {
-	std::array<uint8_t, SHASH_LENGTH> encrypted_hash;	// 28 bytes
+	StrongHash encrypted_hash;	// 28 bytes
 	uint32_t blocksize;	// 4 bytes
-	std::array<uint8_t, AES_BLOCKSIZE> iv;	// 16 bytes
+	IV iv;	// 16 bytes
 
 	struct Hashes {
 		weakhash_t weak_hash;	// 4 bytes
-		std::array<uint8_t, SHASH_LENGTH> strong_hash;	// 28 bytes
+		StrongHash strong_hash;	// 28 bytes
 	};
 	std::array<uint8_t, sizeof(Hashes)> encrypted_hashes_part;
 	Hashes decrypted_hashes_part;
 
-	void encrypt_hashes(const key_t& key);
-	void decrypt_hashes(const key_t& key);
+	void encrypt_hashes(const Key& key);
+	void decrypt_hashes(const Key& key);
 };
 
 class EncFileMap {

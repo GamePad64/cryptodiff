@@ -38,9 +38,9 @@ constexpr size_t SHASH_LENGTH = 28;
 constexpr size_t AES_BLOCKSIZE = 16;
 constexpr size_t AES_KEYSIZE = 32;
 
-using shash_t = std::array<uint8_t, SHASH_LENGTH>;
-using iv_t = std::array<uint8_t, AES_BLOCKSIZE>;
-using key_t = std::array<uint8_t, AES_KEYSIZE>;
+using StrongHash = std::array<uint8_t, SHASH_LENGTH>;
+using IV = std::array<uint8_t, AES_BLOCKSIZE>;
+using Key = std::array<uint8_t, AES_KEYSIZE>;
 
 class CRYPTODIFF_DLL_EXPORTED Block {
 	void* pImpl;
@@ -54,26 +54,26 @@ public:
 
 	struct Hashes {
 		uint32_t weak_hash;	// 4 bytes
-		shash_t strong_hash;	// 28 bytes
+		StrongHash strong_hash;	// 28 bytes
 	};
 
-	void encrypt_hashes(const key_t& key);
-	void decrypt_hashes(const key_t& key);
+	void encrypt_hashes(const Key& key);
+	void decrypt_hashes(const Key& key);
 
 	// Getters & setters
-	const shash_t& get_encrypted_hash() const;
-	void set_encrypted_hash(const shash_t& encrypted_hash);
+	const StrongHash& get_encrypted_hash() const;
+	void set_encrypted_hash(const StrongHash& encrypted_hash);
 
 	uint32_t get_blocksize() const;
 	void set_blocksize(uint32_t blocksize);
 
-	const iv_t& get_iv() const;
-	void set_iv(const iv_t& iv);
+	const IV& get_iv() const;
+	void set_iv(const IV& iv);
 
 	uint32_t get_decrypted_weak_hash() const;
 	void set_decrypted_weak_hash(uint32_t decrypted_weak_hash);
-	const shash_t& get_decrypted_strong_hash() const;
-	void set_decrypted_strong_hash(const shash_t& decrypted_weak_hash);
+	const StrongHash& get_decrypted_strong_hash() const;
+	void set_decrypted_strong_hash(const StrongHash& decrypted_weak_hash);
 
 	const std::array<uint8_t, sizeof(Hashes)>& get_encrypted_hashes_part() const;
 	void set_encrypted_hashes_part(const std::array<uint8_t, sizeof(Hashes)>& encrypted_hashes_part);
@@ -119,7 +119,7 @@ class CRYPTODIFF_DLL_EXPORTED FileMap : public EncFileMap {
 protected:
 	FileMap();
 public:
-	FileMap(const key_t& key);
+	FileMap(const Key& key);
 	virtual ~FileMap();
 
 	void create(std::istream& datafile, uint32_t maxblocksize = 2*1024*1024, uint32_t minblocksize = 32 * 1024);

@@ -26,8 +26,16 @@
 namespace cryptodiff {
 namespace internals {
 
+uint64_t FileMap::filesize(std::istream& ifile){
+	auto cur_pos = ifile.tellg();
+	ifile.seekg(0, ifile.end);
+	auto size = ifile.tellg();
+	ifile.seekg(cur_pos);
+	return size;
+}
+
 Block FileMap::process_block(const uint8_t* data, size_t size,
-		const iv_t& iv) {
+		const IV& iv) {
 	Block proc;
 	proc.blocksize = size;
 	proc.iv = iv;
@@ -56,7 +64,7 @@ decltype(FileMap::hashed_blocks)::iterator FileMap::match_block(const uint8_t* d
 	return hashed_blocks.end();
 }
 
-FileMap::FileMap(const key_t& key) : key(key) {}
+FileMap::FileMap(const Key& key) : key(key) {}
 FileMap::~FileMap() {}
 
 void FileMap::create(std::istream& datafile, uint32_t maxblocksize, uint32_t minblocksize) {

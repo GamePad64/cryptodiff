@@ -42,10 +42,10 @@ Block::~Block(){
 	delete reinterpret_cast<internals::Block*>(pImpl);
 }
 
-void Block::encrypt_hashes(const key_t& key){
+void Block::encrypt_hashes(const Key& key){
 	reinterpret_cast<internals::Block*>(pImpl)->encrypt_hashes(key);
 }
-void Block::decrypt_hashes(const key_t& key){
+void Block::decrypt_hashes(const Key& key){
 	reinterpret_cast<internals::Block*>(pImpl)->decrypt_hashes(key);
 }
 
