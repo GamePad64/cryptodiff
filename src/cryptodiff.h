@@ -27,6 +27,9 @@
 #define CRYPTODIFF_DLL_EXPORTED
 #endif
 
+#ifdef WITH_PROTOBUF
+#include "EncFileMap.pb.h"
+#endif
 #include <cstdint>
 #include <iostream>
 #include <array>
@@ -96,8 +99,12 @@ public:
 	std::vector<Block> blocks() const;
 	std::vector<Block> delta(const EncFileMap& old_filemap);
 
-	void from_array(const uint8_t* data, size_t size);
+#ifdef WITH_PROTOBUF
+	void from_protobuf(const EncFileMap_protobuf& protobuf_structure);
+	EncFileMap_protobuf to_protobuf() const;
+#endif
 
+	void from_array(const uint8_t* data, size_t size);
 	void from_string(const std::string& serialized_str);
 	std::string to_string() const;
 

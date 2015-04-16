@@ -15,6 +15,7 @@
  */
 #include "impl/EncFileMap.h"
 #include "impl/FileMap.h"
+#include "EncFileMap.pb.h"
 #include "cryptodiff.h"
 
 namespace cryptodiff {
@@ -133,14 +134,27 @@ std::vector<Block> EncFileMap::delta(const EncFileMap& old_filemap){
 	return delta_vec;
 }
 
+#ifdef WITH_PROTOBUF
+void EncFileMap::from_protobuf(const EncFileMap_protobuf& protobuf_structure){
+	reinterpret_cast<internals::EncFileMap*>(pImpl)->from_protobuf(protobuf_structure);
+}
+EncFileMap_protobuf EncFileMap::to_protobuf() const {
+	return reinterpret_cast<internals::EncFileMap*>(pImpl)->to_protobuf();
+}
+#endif
+
 void EncFileMap::from_array(const uint8_t* data, size_t size){
-	reinterpret_cast<internals::EncFileMap*>(pImpl)->from_array(data, size);
+	EncFileMap_protobuf protobuf_structure;
+	protobuf_structure.ParseFromArray(data, size);
+	reinterpret_cast<internals::EncFileMap*>(pImpl)->from_protobuf(protobuf_structure);
 }
 void EncFileMap::from_string(const std::string& serialized_str){
-	reinterpret_cast<internals::EncFileMap*>(pImpl)->from_string(serialized_str);
+	EncFileMap_protobuf protobuf_structure;
+	protobuf_structure.ParseFromString(serialized_str);
+	reinterpret_cast<internals::EncFileMap*>(pImpl)->from_protobuf(protobuf_structure);
 }
 std::string EncFileMap::to_string() const {
-	return reinterpret_cast<internals::EncFileMap*>(pImpl)->to_string();
+	return reinterpret_cast<internals::EncFileMap*>(pImpl)->to_protobuf().SerializeAsString();
 }
 
 void EncFileMap::from_file(std::istream& lvfile){

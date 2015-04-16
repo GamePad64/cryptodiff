@@ -164,7 +164,7 @@ FileMap FileMap::update(std::istream& datafile) {
 	return upd;
 }
 
-void FileMap::from_protobuf(const EncFileMap_s& filemap_s) {
+void FileMap::from_protobuf(const EncFileMap_protobuf& filemap_s) {
 	EncFileMap::from_protobuf(filemap_s);
 	for(auto block : offset_blocks){
 		block.second->decrypt_hashes(key);

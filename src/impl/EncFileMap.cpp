@@ -60,7 +60,7 @@ std::list<std::shared_ptr<const Block>> EncFileMap::delta(const EncFileMap& old_
 	return missing_blocks;
 }
 
-void EncFileMap::from_protobuf(const EncFileMap_s& filemap_s) {
+void EncFileMap::from_protobuf(const EncFileMap_protobuf& filemap_s) {
 	size = 0;
 	maxblocksize = filemap_s.maxblocksize();
 	minblocksize = filemap_s.minblocksize();
@@ -77,8 +77,8 @@ void EncFileMap::from_protobuf(const EncFileMap_s& filemap_s) {
 	}
 }
 
-EncFileMap_s EncFileMap::to_protobuf() const {
-	EncFileMap_s serialized_map;
+EncFileMap_protobuf EncFileMap::to_protobuf() const {
+	EncFileMap_protobuf serialized_map;
 	serialized_map.set_maxblocksize(maxblocksize);
 	serialized_map.set_minblocksize(minblocksize);
 	for(auto block : offset_blocks){
@@ -91,24 +91,8 @@ EncFileMap_s EncFileMap::to_protobuf() const {
 	return serialized_map;
 }
 
-void EncFileMap::from_array(const uint8_t* data, size_t size){
-	EncFileMap_s filemap_s; filemap_s.ParseFromArray(data, size);
-	from_protobuf(filemap_s);
-}
-
-void EncFileMap::from_string(const std::string& serialized_str) {
-	EncFileMap_s filemap_s; filemap_s.ParseFromString(serialized_str);
-	from_protobuf(filemap_s);
-}
-
-std::string EncFileMap::to_string() const {
-	std::string filemap_str;
-	to_protobuf().SerializeToString(&filemap_str);
-	return filemap_str;
-}
-
 void EncFileMap::from_file(std::istream& lvfile){
-	EncFileMap_s filemap_s; filemap_s.ParseFromIstream(&lvfile);
+	EncFileMap_protobuf filemap_s; filemap_s.ParseFromIstream(&lvfile);
 	from_protobuf(filemap_s);
 }
 

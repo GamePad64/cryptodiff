@@ -67,6 +67,7 @@ target_link_libraries(${TARGET_EXECUTABLE_NAME} ${TARGET_LIBRARY_NAME})
 install (TARGETS ${TARGET_LIBRARY_NAME} DESTINATION lib)
 install (TARGETS ${TARGET_EXECUTABLE_NAME} DESTINATION bin)
 install (FILES src/cryptodiff.h DESTINATION include)
+install (FILES EncFileMap.proto DESTINATION include)
 
 #============================================================================
 # Third-party Libraries

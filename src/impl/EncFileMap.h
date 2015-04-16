@@ -68,13 +68,8 @@ public:
 	std::list<std::shared_ptr<const Block>> blocks() const;
 	std::list<std::shared_ptr<const Block>> delta(const EncFileMap& old_filemap);
 
-	virtual void from_protobuf(const EncFileMap_s& filemap_s);
-	EncFileMap_s to_protobuf() const;
-
-	void from_array(const uint8_t* data, size_t size);
-
-	void from_string(const std::string& serialized_str);
-	std::string to_string() const;
+	virtual void from_protobuf(const EncFileMap_protobuf& filemap_s);
+	EncFileMap_protobuf to_protobuf() const;
 
 	void from_file(std::istream& lvfile);
 	void to_file(std::ostream& lvfile);

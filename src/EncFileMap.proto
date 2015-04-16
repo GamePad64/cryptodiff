@@ -14,17 +14,17 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 syntax = "proto2";
-package cryptodiff.internals;
+package cryptodiff;
 
-message EncFileMap_s {
+message EncFileMap_protobuf {
 	optional uint32 maxblocksize = 2;
 	optional uint32 minblocksize = 3;
-	message Block_s {
+	message Block {
 		optional bytes encrypted_hash = 1;
 		optional uint32 blocksize = 2;
 		optional bytes iv = 3;
 
 		optional bytes encrypted_hashes = 4;
 	}
-	repeated Block_s blocks = 1;
+	repeated Block blocks = 1;
 }
