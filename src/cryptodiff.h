@@ -34,13 +34,13 @@
 
 namespace cryptodiff {
 
-constexpr size_t SHASH_LENGTH = 28;
-constexpr size_t AES_BLOCKSIZE = 16;
-constexpr size_t AES_KEYSIZE = 32;
+constexpr size_t SHASH_LENGTH = 28;	///< Size of SHA3-224 digest
+constexpr size_t AES_BLOCKSIZE = 16;	///< Size of any AES block
+constexpr size_t AES_KEYSIZE = 32;	///< Size of AES-256 key
 
-using StrongHash = std::array<uint8_t, SHASH_LENGTH>;
-using IV = std::array<uint8_t, AES_BLOCKSIZE>;
-using Key = std::array<uint8_t, AES_KEYSIZE>;
+using StrongHash = std::array<uint8_t, SHASH_LENGTH>;	///< Byte array, used to store SHA3-224 checksum, which is used as "strong hash" in rsync algorithm.
+using IV = std::array<uint8_t, AES_BLOCKSIZE>;	///< Byte array, used to store IV, which is used in AES-256-CBC encryption when generating encrypted_hash.
+using Key = std::array<uint8_t, AES_KEYSIZE>;	///< Byte array, containing AES-256 key.
 
 class CRYPTODIFF_DLL_EXPORTED Block {
 	void* pImpl;
@@ -60,23 +60,15 @@ public:
 	void encrypt_hashes(const Key& key);
 	void decrypt_hashes(const Key& key);
 
-	// Getters & setters
+	/* Getters */
 	const StrongHash& get_encrypted_hash() const;
-	void set_encrypted_hash(const StrongHash& encrypted_hash);
 
 	uint32_t get_blocksize() const;
-	void set_blocksize(uint32_t blocksize);
-
 	const IV& get_iv() const;
-	void set_iv(const IV& iv);
-
-	uint32_t get_decrypted_weak_hash() const;
-	void set_decrypted_weak_hash(uint32_t decrypted_weak_hash);
-	const StrongHash& get_decrypted_strong_hash() const;
-	void set_decrypted_strong_hash(const StrongHash& decrypted_weak_hash);
 
 	const std::array<uint8_t, sizeof(Hashes)>& get_encrypted_hashes_part() const;
-	void set_encrypted_hashes_part(const std::array<uint8_t, sizeof(Hashes)>& encrypted_hashes_part);
+	uint32_t get_decrypted_weak_hash() const;
+	const StrongHash& get_decrypted_strong_hash() const;
 
 	/* implementation */
 	inline void* get_implementation(){return pImpl;}

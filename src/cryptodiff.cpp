@@ -52,42 +52,24 @@ void Block::decrypt_hashes(const Key& key){
 const std::array<uint8_t, SHASH_LENGTH>& Block::get_encrypted_hash() const {
 	return reinterpret_cast<internals::Block*>(pImpl)->encrypted_hash;
 }
-void Block::set_encrypted_hash(const std::array<uint8_t, SHASH_LENGTH>& encrypted_hash){
-	reinterpret_cast<internals::Block*>(pImpl)->encrypted_hash = encrypted_hash;
-}
 
 uint32_t Block::get_blocksize() const {
 	return reinterpret_cast<internals::Block*>(pImpl)->blocksize;
-}
-void Block::set_blocksize(uint32_t blocksize) {
-	reinterpret_cast<internals::Block*>(pImpl)->blocksize = blocksize;
 }
 
 const std::array<uint8_t, AES_BLOCKSIZE>& Block::get_iv() const {
 	return reinterpret_cast<internals::Block*>(pImpl)->iv;
 }
-void Block::set_iv(const std::array<uint8_t, AES_BLOCKSIZE>& iv) {
-	reinterpret_cast<internals::Block*>(pImpl)->iv = iv;
-}
 
 uint32_t Block::get_decrypted_weak_hash() const {
 	return reinterpret_cast<internals::Block*>(pImpl)->decrypted_hashes_part.weak_hash;
 }
-void Block::set_decrypted_weak_hash(uint32_t decrypted_weak_hash) {
-	reinterpret_cast<internals::Block*>(pImpl)->decrypted_hashes_part.weak_hash = decrypted_weak_hash;
-}
 const std::array<uint8_t, SHASH_LENGTH>& Block::get_decrypted_strong_hash() const {
 	return reinterpret_cast<internals::Block*>(pImpl)->decrypted_hashes_part.strong_hash;
-}
-void Block::set_decrypted_strong_hash(const std::array<uint8_t, SHASH_LENGTH>& decrypted_strong_hash) {
-	reinterpret_cast<internals::Block*>(pImpl)->decrypted_hashes_part.strong_hash = decrypted_strong_hash;
 }
 
 const std::array<uint8_t, sizeof(Block::Hashes)>& Block::get_encrypted_hashes_part() const {
 	return reinterpret_cast<internals::Block*>(pImpl)->encrypted_hashes_part;
-}
-void Block::set_encrypted_hashes_part(const std::array<uint8_t, sizeof(Hashes)>& encrypted_hashes_part) {
-	reinterpret_cast<internals::Block*>(pImpl)->encrypted_hashes_part = encrypted_hashes_part;
 }
 
 /* EncFileMap */
