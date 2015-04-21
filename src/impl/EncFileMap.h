@@ -37,12 +37,13 @@ using namespace crypto;
 struct Block {
 	StrongHash encrypted_hash;	// 28 bytes
 	uint32_t blocksize;	// 4 bytes
-	IV iv;	// 16 bytes
+	/* IV is being reused as decrypted_hashes_part is considered not equal plaintext's first 32 bytes */
+	IV iv;	// 16 bytes.
 
 	struct Hashes {
 		weakhash_t weak_hash;	// 4 bytes
 		StrongHash strong_hash;	// 28 bytes
-	};
+	}; // 32 bytes = 2 AES-CBC blocks
 	std::array<uint8_t, sizeof(Hashes)> encrypted_hashes_part;
 	Hashes decrypted_hashes_part;
 
