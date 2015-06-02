@@ -236,8 +236,8 @@ void FileMap::fill_with_map(std::istream& datafile, empty_block_t unassigned_spa
 
 			print_debug_block(*processed_block, block_count);
 
-			hashed_blocks.insert({processed_block->decrypted_hashes_part.weak_hash, processed_block});
-			offset_blocks.insert({offset, processed_block});
+			hashed_blocks.insert({processed_block->decrypted_hashes_part.weak_hash, processed_block});	// TODO: We have a great race condition here. MUST BE FIXED!
+			offset_blocks.insert({offset, processed_block});	// TODO: Also here. Protect hashed_blocks, offset_blocks!
 		}, unassigned_space.first, bytes_to_read, ++block_count, &datafile_lock, &datafile));
 		unassigned_space.first += bytes_to_read;
 		unassigned_space.second -= bytes_to_read;
