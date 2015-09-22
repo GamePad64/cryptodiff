@@ -27,13 +27,12 @@ int main(int argc, char** argv){
 	if(argc < 2){return 1;}
 
 	if(strcmp(argv[1], "create") == 0){
-		std::ifstream datafile(argv[2]);
 		std::ofstream mapfile(argv[3]);
 
 		std::array<uint8_t, 32> key;
 		std::copy((uint8_t*)argv[4], (uint8_t*)argv[4]+32, key.data());
 		FileMap filemap(key);
-		filemap.create(datafile);
+		filemap.create(argv[2]);
 		filemap.to_file(mapfile);
 	}else if(strcmp(argv[1], "read") == 0){
 		std::ifstream mapfile(argv[2]);
@@ -50,7 +49,6 @@ int main(int argc, char** argv){
 		filemap->from_file(mapfile);
 		filemap->print_debug();
 	}else if(strcmp(argv[1], "update") == 0){	// also known as rechunk
-		std::ifstream datafile(argv[2]);
 		std::ifstream mapfile_old(argv[3]);
 		std::ofstream mapfile_new(argv[4]);
 
@@ -59,7 +57,7 @@ int main(int argc, char** argv){
 
 		FileMap filemap_old(key);
 		filemap_old.from_file(mapfile_old);
-		FileMap filemap_new = filemap_old.update(datafile);
+		FileMap filemap_new = filemap_old.update(argv[2]);
 		filemap_new.to_file(mapfile_new);
 	}else if(strcmp(argv[1], "delta") == 0){	// also known as rechunk
 		std::ifstream mapfile_old(argv[2]);

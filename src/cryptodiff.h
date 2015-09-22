@@ -114,8 +114,8 @@ public:
 	FileMap(const Key& key);
 	virtual ~FileMap();
 
-	void create(std::istream& datafile, uint32_t maxblocksize = 2*1024*1024, uint32_t minblocksize = 32 * 1024);
-	FileMap update(std::istream& datafile);
+	void create(const std::string& datafile, uint32_t maxblocksize = 2*1024*1024, uint32_t minblocksize = 32 * 1024);
+	FileMap update(const std::string& datafile);
 };
 
 } /* namespace filemap */

@@ -26,25 +26,16 @@
 namespace cryptodiff {
 namespace internals {
 
-uint64_t FileMap::filesize(std::istream& ifile){
-	auto cur_pos = ifile.tellg();
-	ifile.seekg(0, ifile.end);
-	auto size = ifile.tellg();
-	ifile.seekg(cur_pos);
-	return size;
-}
-
-Block FileMap::process_block(const uint8_t* data, size_t size,
-		const IV& iv) {
+Block FileMap::process_block(std::vector<uint8_t> data, const IV& iv) {
 	Block proc;
-	proc.blocksize = size;
+	proc.blocksize = data.size();
 	proc.iv = iv;
 
-	auto encrypted_block = encrypt(data, size, key, iv, proc.blocksize % AES_BLOCKSIZE == 0 ? true : false);
+	auto encrypted_block = encrypt(data.data(), data.size(), key, iv, proc.blocksize % AES_BLOCKSIZE == 0 ? true : false);
 	proc.encrypted_hash = compute_shash(encrypted_block.data(), encrypted_block.size());
 
-	proc.decrypted_hashes_part.strong_hash = compute_shash(data, size);
-	proc.decrypted_hashes_part.weak_hash = RsyncChecksum(data, data+size);
+	proc.decrypted_hashes_part.strong_hash = compute_shash(data.data(), data.size());
+	proc.decrypted_hashes_part.weak_hash = RsyncChecksum(data.begin(), data.end());
 
 	proc.encrypt_hashes(key);
 
@@ -67,16 +58,20 @@ decltype(FileMap::hashed_blocks)::iterator FileMap::match_block(const uint8_t* d
 FileMap::FileMap(const Key& key) : key(key) {}
 FileMap::~FileMap() {}
 
-void FileMap::create(std::istream& datafile, uint32_t maxblocksize, uint32_t minblocksize) {
+void FileMap::create(const std::string& path, uint32_t maxblocksize, uint32_t minblocksize) {
 	this->maxblocksize = maxblocksize;
 	this->minblocksize = minblocksize;
-	size = filesize(datafile);
+
+	File datafile(path);
+	size = datafile.size();
 
 	fill_with_map(datafile, {0, size});
 }
 
-FileMap FileMap::update(std::istream& datafile) {
-	FileMap upd(key); upd.size = filesize(datafile);
+FileMap FileMap::update(const std::string& path) {
+	File datafile(path);
+
+	FileMap upd(key); upd.size = datafile.size();
 	upd.maxblocksize = maxblocksize;
 	upd.minblocksize = minblocksize;
 
@@ -101,15 +96,12 @@ FileMap FileMap::update(std::istream& datafile) {
 	empty_blocks.push_back(empty_block_t(0, upd.size));
 
 	for(auto blocksize : block_sizes){
-		std::vector<uint8_t> blockbuf; blockbuf.resize(blocksize);
-
 		for(auto empty_block_it = empty_blocks.begin(); empty_block_it != empty_blocks.end(); ){
 			if(empty_block_it->second < blocksize) {empty_block_it++; continue;}
 
 			offset_t offset = empty_block_it->first;
+			std::vector<uint8_t> blockbuf = datafile.get(offset, blocksize);
 
-			datafile.seekg(offset);
-			datafile.read((char*)blockbuf.data(), blocksize);
 			StatefulRsyncChecksum checksum(blockbuf.begin(), blockbuf.end());
 
 			decltype(hashed_blocks)::iterator matched_it;
@@ -136,8 +128,7 @@ FileMap FileMap::update(std::istream& datafile) {
 					break;
 				}
 				if(offset != empty_block_it->first+empty_block_it->second){
-					checksum.roll(datafile.get());
-					offset++;
+					checksum.roll(datafile.get(++offset));
 				}else break;
 			}while(true);
 			if(matched_it == blocks_left.end()){
@@ -172,22 +163,17 @@ void FileMap::from_protobuf(const EncFileMap_s& filemap_s) {
 	}
 }
 
-std::shared_ptr<Block> FileMap::create_block(std::istream& datafile, empty_block_t unassigned_space){
-	std::vector<char> rdbuf(size);
+std::shared_ptr<Block> FileMap::create_block(File& datafile, empty_block_t unassigned_space, int num){
+	std::shared_ptr<Block> processed_block = std::make_shared<Block>(process_block(datafile.get(unassigned_space.first, unassigned_space.second)));
 
-	datafile.seekg(unassigned_space.first);
-	datafile.read(&*rdbuf.begin(), unassigned_space.second);
+	print_debug_block(*processed_block, num);
 
-	std::shared_ptr<Block> processed_block = std::make_shared<Block>(process_block((uint8_t*)rdbuf.data(), rdbuf.size()));
-
-	print_debug_block(*processed_block);
-
-	hashed_blocks.insert({processed_block->decrypted_hashes_part.weak_hash, processed_block});
-	offset_blocks.insert({unassigned_space.first, processed_block});
+	hashed_blocks.insert({processed_block->decrypted_hashes_part.weak_hash, processed_block});	// TODO: We have a great race condition here. MUST BE FIXED!
+	offset_blocks.insert({unassigned_space.first, processed_block});	// TODO: Also here. Protect hashed_blocks, offset_blocks!
 	return processed_block;
 }
 
-void FileMap::create_neighbormap(std::istream& datafile,
+void FileMap::create_neighbormap(File& datafile,
 		std::shared_ptr<Block> left, std::shared_ptr<Block> right,
 		empty_block_t unassigned_space) {
 	if(!right && !left){
@@ -205,7 +191,7 @@ void FileMap::create_neighbormap(std::istream& datafile,
 	}
 }
 
-void FileMap::fill_with_map(std::istream& datafile, empty_block_t unassigned_space) {
+void FileMap::fill_with_map(File& datafile, empty_block_t unassigned_space) {
 	if(unassigned_space.second == 0) return;
 
 	boost::asio::io_service io_service;
@@ -224,21 +210,7 @@ void FileMap::fill_with_map(std::istream& datafile, empty_block_t unassigned_spa
 	int block_count = 0;
 	while(unassigned_space.second != 0){
 		size_t bytes_to_read = std::min(unassigned_space.second, maxblocksize);
-		io_service.post(std::bind([this](offset_t offset, size_t size, int block_count, std::mutex* datafile_lock, std::istream* file){
-			std::vector<char> rdbuf(size);
-
-			datafile_lock->lock();
-			file->seekg(offset);
-			file->read(&*rdbuf.begin(), size);
-			datafile_lock->unlock();
-
-			std::shared_ptr<Block> processed_block = std::make_shared<Block>(process_block((uint8_t*)rdbuf.data(), rdbuf.size()));
-
-			print_debug_block(*processed_block, block_count);
-
-			hashed_blocks.insert({processed_block->decrypted_hashes_part.weak_hash, processed_block});	// TODO: We have a great race condition here. MUST BE FIXED!
-			offset_blocks.insert({offset, processed_block});	// TODO: Also here. Protect hashed_blocks, offset_blocks!
-		}, unassigned_space.first, bytes_to_read, ++block_count, &datafile_lock, &datafile));
+		io_service.post(std::bind(&FileMap::create_block, this, std::ref(datafile), empty_block_t{unassigned_space.first, bytes_to_read}, ++block_count));
 		unassigned_space.first += bytes_to_read;
 		unassigned_space.second -= bytes_to_read;
 	}

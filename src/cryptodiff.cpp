@@ -156,10 +156,10 @@ FileMap::FileMap(const std::array<uint8_t, AES_KEYSIZE>& key){
 }
 FileMap::~FileMap(){}
 
-void FileMap::create(std::istream& datafile, uint32_t maxblocksize, uint32_t minblocksize){
+void FileMap::create(const std::string& datafile, uint32_t maxblocksize, uint32_t minblocksize){
 	reinterpret_cast<internals::FileMap*>(pImpl)->create(datafile, maxblocksize, minblocksize);
 }
-FileMap FileMap::update(std::istream& datafile){
+FileMap FileMap::update(const std::string& datafile){
 	FileMap new_map;
 	auto new_internal = new internals::FileMap(reinterpret_cast<internals::FileMap*>(pImpl)->update(datafile));
 	std::swap(*reinterpret_cast<internals::FileMap*>(pImpl), *new_internal);

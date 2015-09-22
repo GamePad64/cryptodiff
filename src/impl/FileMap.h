@@ -18,8 +18,9 @@
 #define SRC_FILEMAP_H_
 
 #include "EncFileMap.h"
-#include <unordered_map>
+#include "File.h"
 #include <cryptopp/osrng.h>
+#include <unordered_map>
 
 namespace cryptodiff {
 namespace internals {
@@ -32,21 +33,18 @@ protected:
 
 	Key key;
 
-	// Generic subroutines
-	uint64_t filesize(std::istream& ifile);
-
 	// Subroutines for creating block signature
-	Block process_block(const uint8_t* data, size_t size){
+	Block process_block(std::vector<uint8_t> data){
 		CryptoPP::AutoSeededRandomPool rng;
 		IV iv; rng.GenerateBlock(iv.data(), AES_BLOCKSIZE);
-		return process_block(data, size, iv);
+		return process_block(data, iv);
 	};
-	Block process_block(const uint8_t* data, size_t size, const IV& iv);
+	Block process_block(std::vector<uint8_t> data, const IV& iv);
 
 	//
-	std::shared_ptr<Block> create_block(std::istream& datafile, empty_block_t unassigned_space);
-	void fill_with_map(std::istream& datafile, empty_block_t unassigned_space);
-	void create_neighbormap(std::istream& datafile, std::shared_ptr<Block> left, std::shared_ptr<Block> right, empty_block_t unassigned_space);
+	std::shared_ptr<Block> create_block(File& datafile, empty_block_t unassigned_space, int num = 0);
+	void fill_with_map(File& datafile, empty_block_t unassigned_space);
+	void create_neighbormap(File& datafile, std::shared_ptr<Block> left, std::shared_ptr<Block> right, empty_block_t unassigned_space);
 
 	// Subroutine for matching blockbuf with defined checksum and existing block signature from blockset.
 	decltype(hashed_blocks)::iterator match_block(const uint8_t* data, size_t size, decltype(hashed_blocks)& blockset, weakhash_t checksum);
@@ -54,8 +52,8 @@ public:
 	FileMap(const Key& key);
 	virtual ~FileMap();
 
-	void create(std::istream& datafile, uint32_t maxblocksize = 2*1024*1024, uint32_t minblocksize = 32 * 1024);
-	FileMap update(std::istream& datafile);
+	void create(const std::string& path, uint32_t maxblocksize = 2*1024*1024, uint32_t minblocksize = 32 * 1024);
+	FileMap update(const std::string& path);
 
 	virtual void from_protobuf(const EncFileMap_s& filemap_s);
 
