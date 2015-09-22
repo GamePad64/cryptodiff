@@ -62,8 +62,8 @@ std::list<std::shared_ptr<const Block>> EncFileMap::delta(const EncFileMap& old_
 
 void EncFileMap::from_protobuf(const EncFileMap_s& filemap_s) {
 	size = 0;
-	maxblocksize = filemap_s.maxblocksize();
-	minblocksize = filemap_s.minblocksize();
+	maxblocksize = filemap_s.maxblocksize() != 0 ? filemap_s.maxblocksize() : 2*1024*1024 ;	// TODO some sort of defaults and sort of protection against maxblocksize=1
+	minblocksize = filemap_s.minblocksize() != 0 ? filemap_s.minblocksize() : 32*1024;
 
 	for(auto block_s : filemap_s.blocks()){
 		auto new_block = std::make_shared<Block>();
