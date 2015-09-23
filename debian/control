@@ -1,0 +1,22 @@
+Source: cryptodiff
+Priority: optional
+Maintainer: Alexander Shishenko <alex@shishenko.com>
+Build-Depends: debhelper (>= 9), cmake, protobuf-compiler, libboost-all-dev, libprotobuf-dev (>= 3)
+Standards-Version: 3.9.6
+Section: libs
+Homepage: https://librevault.com
+Vcs-Git: https://github.com/GamePad64/cryptodiff.git
+Vcs-Browser: https://github.com/GamePad64/cryptodiff
+
+Package: libcryptodiff-dev
+Section: libdevel
+Architecture: all
+Depends: cryptodiff1 (= ${binary:Version}), ${misc:Depends}
+Description: <insert up to 60 chars description>
+ <insert long description, indented with spaces>
+
+Package: libcryptodiff1
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: <insert up to 60 chars description>
+ <insert long description, indented with spaces>

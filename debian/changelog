@@ -1,0 +1,5 @@
+cryptodiff (0.0-1) unstable; urgency=low
+
+  * Initial release (Closes: #nnnn)  <nnnn is the bug number of your ITP>
+
+ -- Alexander Shishenko <alex@shishenko.com>  Wed, 23 Sep 2015 09:59:58 +0300
