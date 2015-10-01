@@ -22,8 +22,8 @@ using weakhash_t = uint32_t;
 
 class RsyncChecksum {
 	const uint8_t char_offset = 31;
-	size_t count = 0;
-	weakhash_t s1 = 0, s2 = 0;
+	uint_fast32_t count = 0;
+	uint_fast32_t s1 = 0, s2 = 0;
 public:
 	RsyncChecksum(){}
 	template<class InputIterator> RsyncChecksum(InputIterator first, InputIterator last) : RsyncChecksum(){compute(first, last);}
@@ -37,11 +37,11 @@ public:
 	 * @return
 	 */
 	template<class InputIterator> weakhash_t compute(InputIterator first, InputIterator last){
-		s1 = 0; s2 = 0; count = 0;
+		s1 = 0; s2 = 0;
+		count = std::distance(first, last);
 		for(auto it = first; it != last; it++){
 			s1 += (reinterpret_cast<const uint8_t&>(*it) + char_offset);
 			s2 += s1;
-			count++;
 		}
 		return static_cast<uint32_t>(*this);
 	}

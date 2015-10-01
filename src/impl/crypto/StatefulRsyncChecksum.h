@@ -17,10 +17,6 @@
 
 #include "RsyncChecksum.h"
 #include <boost/circular_buffer.hpp>
-#include <cstdint>
-#include <string>
-
-using weakhash_t = uint32_t;
 
 class StatefulRsyncChecksum {
 	RsyncChecksum checksum;
@@ -44,8 +40,8 @@ public:
 	}
 
 	weakhash_t roll(uint8_t in){
-		checksum.roll(state_buffer.front(), in);
+		uint8_t front = state_buffer.front();
 		state_buffer.push_back(in);
-		return checksum;
+		return checksum.roll(front, in);
 	}
 };
