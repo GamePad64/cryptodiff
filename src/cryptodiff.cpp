@@ -19,6 +19,10 @@
 
 namespace cryptodiff {
 
+void set_logger(std::shared_ptr<spdlog::logger> logger) {
+	internals::set_logger(logger);
+}
+
 /* Block */
 Block::Block(){
 	pImpl = new internals::Block();
@@ -42,14 +46,14 @@ Block::~Block(){
 	delete reinterpret_cast<internals::Block*>(pImpl);
 }
 
-void Block::encrypt_hashes(const Key& key){
+void Block::encrypt_hashes(const std::vector<uint8_t>& key){
 	reinterpret_cast<internals::Block*>(pImpl)->encrypt_hashes(key);
 }
-void Block::decrypt_hashes(const Key& key){
+void Block::decrypt_hashes(const std::vector<uint8_t>& key){
 	reinterpret_cast<internals::Block*>(pImpl)->decrypt_hashes(key);
 }
 
-const std::array<uint8_t, SHASH_LENGTH>& Block::get_encrypted_hash() const {
+const std::vector<uint8_t>& Block::get_encrypted_hash() const {
 	return reinterpret_cast<internals::Block*>(pImpl)->encrypted_hash;
 }
 
@@ -57,15 +61,15 @@ uint32_t Block::get_blocksize() const {
 	return reinterpret_cast<internals::Block*>(pImpl)->blocksize;
 }
 
-const std::array<uint8_t, AES_BLOCKSIZE>& Block::get_iv() const {
+const std::vector<uint8_t>& Block::get_iv() const {
 	return reinterpret_cast<internals::Block*>(pImpl)->iv;
 }
 
 uint32_t Block::get_decrypted_weak_hash() const {
-	return reinterpret_cast<internals::Block*>(pImpl)->decrypted_hashes_part.weak_hash;
+	return reinterpret_cast<internals::Block*>(pImpl)->weak_hash;
 }
-const std::array<uint8_t, SHASH_LENGTH>& Block::get_decrypted_strong_hash() const {
-	return reinterpret_cast<internals::Block*>(pImpl)->decrypted_hashes_part.strong_hash;
+const std::vector<uint8_t>& Block::get_decrypted_strong_hash() const {
+	return reinterpret_cast<internals::Block*>(pImpl)->strong_hash;
 }
 
 const std::array<uint8_t, sizeof(Block::Hashes)>& Block::get_encrypted_hashes_part() const {
@@ -125,13 +129,6 @@ std::string EncFileMap::to_string() const {
 	return reinterpret_cast<internals::EncFileMap*>(pImpl)->to_string();
 }
 
-void EncFileMap::from_file(std::istream& lvfile){
-	reinterpret_cast<internals::EncFileMap*>(pImpl)->from_file(lvfile);
-}
-void EncFileMap::to_file(std::ostream& lvfile){
-	reinterpret_cast<internals::EncFileMap*>(pImpl)->to_file(lvfile);
-}
-
 void EncFileMap::print_debug() const {
 	reinterpret_cast<internals::EncFileMap*>(pImpl)->print_debug();
 }
@@ -151,7 +148,7 @@ uint64_t EncFileMap::get_filesize() const {
 
 /* FileMap */
 FileMap::FileMap(){pImpl = nullptr;}
-FileMap::FileMap(const std::array<uint8_t, AES_KEYSIZE>& key){
+FileMap::FileMap(const std::vector<uint8_t>& key){
 	pImpl = new internals::FileMap(key);
 }
 FileMap::~FileMap(){}

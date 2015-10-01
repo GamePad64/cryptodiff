@@ -1,3 +1,6 @@
-[submodule "src/impl/crypto/wrappers"]
-	path = src/impl/crypto/wrappers
-	url = https://github.com/GamePad64/cryptowrappers.git
+[submodule "contrib/spdlog"]
+	path = contrib/spdlog
+	url = https://github.com/GamePad64/spdlog.git
+[submodule "contrib/lvcrypto"]
+	path = contrib/lvcrypto
+	url = https://github.com/GamePad64/lvcrypto.git

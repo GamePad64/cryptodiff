@@ -31,19 +31,17 @@
 #include <iostream>
 #include <array>
 #include <vector>
+#include <memory>
+
+namespace spdlog {
+class logger;
+} /* namespace spdlog */
 
 namespace cryptodiff {
 
-constexpr size_t SHASH_LENGTH = 28;	///< Size of SHA3-224 digest
-constexpr size_t AES_BLOCKSIZE = 16;	///< Size of any AES block
-constexpr size_t AES_KEYSIZE = 32;	///< Size of AES-256 key
-
-using StrongHash = std::array<uint8_t, SHASH_LENGTH>;	///< Byte array, used to store SHA3-224 checksum, which is used as "strong hash" in rsync algorithm.
-using IV = std::array<uint8_t, AES_BLOCKSIZE>;	///< Byte array, used to store IV, which is used in AES-256-CBC encryption when generating encrypted_hash.
-using Key = std::array<uint8_t, AES_KEYSIZE>;	///< Byte array, containing AES-256 key.
+void set_logger(std::shared_ptr<spdlog::logger> logger);
 
 class CRYPTODIFF_DLL_EXPORTED Block {
-	void* pImpl;
 public:
 	Block();
 	Block(const Block& block);
@@ -54,29 +52,30 @@ public:
 
 	struct Hashes {
 		uint32_t weak_hash;	// 4 bytes
-		StrongHash strong_hash;	// 28 bytes
+		std::array<uint8_t, 28> strong_hash;	// 28 bytes
 	};
 
-	void encrypt_hashes(const Key& key);
-	void decrypt_hashes(const Key& key);
+	void encrypt_hashes(const std::vector<uint8_t>& key);
+	void decrypt_hashes(const std::vector<uint8_t>& key);
 
 	/* Getters */
-	const StrongHash& get_encrypted_hash() const;
+	const std::vector<uint8_t>& get_encrypted_hash() const;
 
 	uint32_t get_blocksize() const;
-	const IV& get_iv() const;
+	const std::vector<uint8_t>& get_iv() const;
 
 	const std::array<uint8_t, sizeof(Hashes)>& get_encrypted_hashes_part() const;
 	uint32_t get_decrypted_weak_hash() const;
-	const StrongHash& get_decrypted_strong_hash() const;
+	const std::vector<uint8_t>& get_decrypted_strong_hash() const;
 
 	/* implementation */
 	inline void* get_implementation(){return pImpl;}
+
+protected:
+	void* pImpl;
 };
 
 class CRYPTODIFF_DLL_EXPORTED EncFileMap {
-protected:
-	void* pImpl;
 public:
 	EncFileMap();
 	EncFileMap(const EncFileMap& encfilemap);
@@ -93,9 +92,6 @@ public:
 	void from_string(const std::string& serialized_str);
 	std::string to_string() const;
 
-	void from_file(std::istream& lvfile);
-	void to_file(std::ostream& lvfile);
-
 	void print_debug() const;
 	void print_debug_block(const Block& block, int count = 0) const;
 
@@ -105,13 +101,16 @@ public:
 
 	/* implementation */
 	inline void* get_implementation(){return pImpl;}
+
+protected:
+	void* pImpl;
 };
 
 class CRYPTODIFF_DLL_EXPORTED FileMap : public EncFileMap {
 protected:
 	FileMap();
 public:
-	FileMap(const Key& key);
+	FileMap(const std::vector<uint8_t>& key);
 	virtual ~FileMap();
 
 	void create(const std::string& datafile, uint32_t maxblocksize = 2*1024*1024, uint32_t minblocksize = 32 * 1024);

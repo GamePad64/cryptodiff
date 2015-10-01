@@ -23,6 +23,7 @@ SET(CMAKE_CXX_STANDARD 14)
 SET(CMAKE_CXX_EXTENSIONS OFF)
 
 include_directories(include)
+include_directories(contrib/include)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 if (MSVC)
@@ -91,7 +92,6 @@ install(FILES include/cryptodiff.h DESTINATION include)
 set(Boost_COMPONENTS
 		system
 		filesystem
-		log
 		iostreams)
 
 # set (Boost_USE_STATIC_LIBS ON)

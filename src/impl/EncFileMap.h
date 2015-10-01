@@ -19,49 +19,33 @@
 
 #include "crypto/RsyncChecksum.h"
 #include "EncFileMap.pb.h"
-#include <string>
-#include <list>
-#include <map>
-#include <array>
-#include <cstdint>
-#include <iostream>
-#include <memory>
-
-#include "crypto/wrappers/cryptowrappers.h"
+#include "pch.h"
 
 namespace cryptodiff {
 namespace internals {
 
-using namespace crypto;
+static std::shared_ptr<spdlog::logger> logger;
+inline void set_logger(std::shared_ptr<spdlog::logger> logger) {cryptodiff::internals::logger = logger;}
+
+enum WeakHashType {RSYNC=0/*, RSYNC64=1*/};
+enum StrongHashType {SHA3_224=0, SHA2_224=1};
 
 struct Block {
-	StrongHash encrypted_hash;	// 28 bytes
+	blob encrypted_hash;	// 28 bytes
 	uint32_t blocksize;	// 4 bytes
 	/* IV is being reused as decrypted_hashes_part is considered not equal plaintext's first 32 bytes */
-	IV iv;	// 16 bytes.
+	blob iv;	// 16 bytes.
 
-	struct Hashes {
-		weakhash_t weak_hash;	// 4 bytes
-		StrongHash strong_hash;	// 28 bytes
-	}; // 32 bytes = 2 AES-CBC blocks
-	std::array<uint8_t, sizeof(Hashes)> encrypted_hashes_part;
-	Hashes decrypted_hashes_part;
+	weakhash_t weak_hash;	// 4 bytes
+	blob strong_hash;	// 28 bytes
 
-	void encrypt_hashes(const Key& key);
-	void decrypt_hashes(const Key& key);
+	std::array<uint8_t, 32> encrypted_hashes_part;
+
+	void encrypt_hashes(const blob& key);
+	void decrypt_hashes(const blob& key);
 };
 
 class EncFileMap {
-protected:
-	using offset_t = uint64_t;
-
-	// Map data
-	uint32_t maxblocksize = 0;
-	uint32_t minblocksize = 0;
-
-	// Other data
-	std::map<offset_t, std::shared_ptr<Block>> offset_blocks;
-	offset_t size = 0;
 public:
 	EncFileMap();
 	virtual ~EncFileMap();
@@ -77,17 +61,25 @@ public:
 	void from_string(const std::string& serialized_str);
 	std::string to_string() const;
 
-	void from_file(std::istream& lvfile);
-	void to_file(std::ostream& lvfile);
-
 	void print_debug() const;
 	virtual void print_debug_block(const Block& block, int num = 0) const;
 
 	// Getters
-	uint32_t get_maxblocksize() const {return maxblocksize;}
-	uint32_t get_minblocksize() const {return minblocksize;}
+	uint32_t get_maxblocksize() const {return maxblocksize_;}
+	uint32_t get_minblocksize() const {return minblocksize_;}
 
-	uint64_t get_filesize() const {return size;}
+	uint64_t get_filesize() const {return size_;}
+
+protected:
+	using offset_t = uint64_t;
+
+	// Map data
+	uint32_t maxblocksize_ = 0;
+	uint32_t minblocksize_ = 0;
+
+	// Other data
+	std::map<offset_t, std::shared_ptr<Block>> offset_blocks_;
+	offset_t size_ = 0;
 };
 
 } /* namespace internals */
