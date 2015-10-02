@@ -15,9 +15,6 @@
  */
 #pragma once
 
-// Cryptodiff
-#include <cryptodiff.h>
-
 // LVCrypto
 #include <lvcrypto/HMAC-SHA3.h>
 #include <lvcrypto/SHA3.h>
@@ -48,10 +45,6 @@
 #include <boost/algorithm/string/trim.hpp>
 
 #include <boost/asio.hpp>
-#include <boost/asio/signal_set.hpp>
-#include <boost/asio/ssl.hpp>
-#include <boost/asio/steady_timer.hpp>
-#include <boost/asio/system_timer.hpp>
 
 #include <boost/endian/arithmetic.hpp>
 
@@ -61,14 +54,7 @@
 #include <boost/lexical_cast.hpp>
 
 #include <boost/predef.h>
-
-#include <boost/program_options.hpp>
-
-#include <boost/property_tree/info_parser.hpp>
-#include <boost/property_tree/json_parser.hpp>
-#include <boost/property_tree/ptree.hpp>
-
-#include <boost/signals2.hpp>
+#include <boost/range/adaptor/map.hpp>
 
 // Standard C++ Libraries
 #include <array>
@@ -81,6 +67,7 @@
 #include <ctime>
 #include <fstream>
 #include <functional>
+#include <iomanip>
 #include <iostream>
 #include <list>
 #include <map>
@@ -94,40 +81,15 @@
 #include <unordered_map>
 #include <vector>
 
-// OS-dependent
-#if BOOST_OS_LINUX
-#include <sys/types.h>
-#endif
-#if BOOST_OS_LINUX || BOOST_OS_UNIX || BOOST_OS_BSD
-#include <pwd.h>
-#include <unistd.h>
-#endif
-
 namespace cryptodiff {
 namespace internals {
 
 namespace fs = boost::filesystem;
-namespace po = boost::program_options;
 
 using boost::asio::io_service;
-using boost::property_tree::ptree;
-
-using boost::asio::ip::address;
-using boost::asio::ip::address_v4;
-using boost::asio::ip::address_v6;
-
-using udp_endpoint = boost::asio::ip::udp::endpoint;
-using tcp_endpoint = boost::asio::ip::tcp::endpoint;
-
-using udp_socket = boost::asio::ip::udp::socket;
-using tcp_socket = boost::asio::ip::tcp::socket;
-
-using ssl_socket = boost::asio::ssl::stream<tcp_socket>;
 
 using byte = uint8_t;
 using blob = std::vector<byte>;
-
-using logger_ptr = std::shared_ptr<spdlog::logger>;
 
 } /* namespace internals */
 } /* namespace cryptodiff */

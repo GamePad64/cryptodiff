@@ -14,9 +14,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "EncFileMap.h"
-#include <boost/range/adaptor/map.hpp>
-#include <boost/log/trivial.hpp>
-#include <boost/asio.hpp>	// For htonl, ntohl
 
 namespace cryptodiff {
 namespace internals {

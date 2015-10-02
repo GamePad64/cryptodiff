@@ -14,13 +14,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #pragma once
-#ifndef SRC_FILEMAP_H_
-#define SRC_FILEMAP_H_
 
 #include "EncFileMap.h"
 #include "File.h"
-#include <cryptopp/osrng.h>
-#include <unordered_map>
 
 namespace cryptodiff {
 namespace internals {
@@ -60,5 +56,3 @@ protected:
 
 } /* namespace internals */
 } /* namespace librevault */
-
-#endif /* SRC_FILEMAP_H_ */

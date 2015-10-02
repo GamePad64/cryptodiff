@@ -14,8 +14,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #pragma once
-#ifndef SRC_ENCFILEMAP_H_
-#define SRC_ENCFILEMAP_H_
 
 #include "crypto/RsyncChecksum.h"
 #include "EncFileMap.pb.h"
@@ -84,5 +82,3 @@ protected:
 
 } /* namespace internals */
 } /* namespace librevault */
-
-#endif /* SRC_ENCFILEMAP_H_ */
