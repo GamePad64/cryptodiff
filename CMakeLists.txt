@@ -1,6 +1,8 @@
 project(cryptodiff)
 cmake_minimum_required(VERSION 3.1)
 
+include(GNUInstallDirs)
+
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
 #============================================================================
@@ -72,8 +74,8 @@ SET_TARGET_PROPERTIES(cryptodiff-static
 		OUTPUT_NAME cryptodiff
 )
 
-install(TARGETS cryptodiff-shared DESTINATION lib)
-install(TARGETS cryptodiff-static DESTINATION lib)
+install(TARGETS cryptodiff-shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
+install(TARGETS cryptodiff-static DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
 install(FILES include/cryptodiff.h DESTINATION include)
 
