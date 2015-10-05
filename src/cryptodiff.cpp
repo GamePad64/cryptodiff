@@ -23,59 +23,6 @@ void set_logger(std::shared_ptr<spdlog::logger> logger) {
 	internals::set_logger(logger);
 }
 
-/* Block */
-Block::Block(){
-	pImpl = new internals::Block();
-}
-Block::Block(const Block& block){
-	pImpl = new internals::Block(*reinterpret_cast<internals::Block*>(block.pImpl));
-}
-Block::Block(Block&& block){
-	std::swap(pImpl, block.pImpl);
-}
-Block& Block::operator=(const Block& block){
-	delete reinterpret_cast<internals::Block*>(pImpl);
-	pImpl = new internals::Block(*reinterpret_cast<internals::Block*>(pImpl));
-	return *this;
-}
-Block& Block::operator=(Block&& block){
-	std::swap(pImpl, block.pImpl);
-	return *this;
-}
-Block::~Block(){
-	delete reinterpret_cast<internals::Block*>(pImpl);
-}
-
-void Block::encrypt_hashes(const std::vector<uint8_t>& key){
-	reinterpret_cast<internals::Block*>(pImpl)->encrypt_hashes(key);
-}
-void Block::decrypt_hashes(const std::vector<uint8_t>& key){
-	reinterpret_cast<internals::Block*>(pImpl)->decrypt_hashes(key);
-}
-
-const std::vector<uint8_t>& Block::get_encrypted_hash() const {
-	return reinterpret_cast<internals::Block*>(pImpl)->encrypted_hash;
-}
-
-uint32_t Block::get_blocksize() const {
-	return reinterpret_cast<internals::Block*>(pImpl)->blocksize;
-}
-
-const std::vector<uint8_t>& Block::get_iv() const {
-	return reinterpret_cast<internals::Block*>(pImpl)->iv;
-}
-
-uint32_t Block::get_decrypted_weak_hash() const {
-	return reinterpret_cast<internals::Block*>(pImpl)->weak_hash;
-}
-const std::vector<uint8_t>& Block::get_decrypted_strong_hash() const {
-	return reinterpret_cast<internals::Block*>(pImpl)->strong_hash;
-}
-
-const std::array<uint8_t, sizeof(Block::Hashes)>& Block::get_encrypted_hashes_part() const {
-	return reinterpret_cast<internals::Block*>(pImpl)->encrypted_hashes_part;
-}
-
 /* EncFileMap */
 EncFileMap::EncFileMap(){
 	pImpl = new internals::EncFileMap();
@@ -99,64 +46,66 @@ EncFileMap::~EncFileMap(){
 	delete reinterpret_cast<internals::EncFileMap*>(pImpl);
 }
 
+std::vector<Block> EncFileMap::delta(const EncFileMap& old_filemap) {
+	return reinterpret_cast<internals::EncFileMap*>(pImpl)->delta(*reinterpret_cast<internals::EncFileMap*>(old_filemap.pImpl));
+}
+
+/* Debug */
+std::string EncFileMap::debug_string() const {
+	return reinterpret_cast<internals::EncFileMap*>(pImpl)->debug_string();
+}
+
+/* Getters */
 std::vector<Block> EncFileMap::blocks() const {
-	auto blocks_ptrlist = reinterpret_cast<internals::EncFileMap*>(pImpl)->blocks();
-	std::vector<Block> blocks_vec; blocks_vec.reserve(blocks_ptrlist.size());
-	for(auto block_ptr : blocks_ptrlist){
-		Block b; *reinterpret_cast<internals::Block*>(b.get_implementation()) = *block_ptr.get();
-		blocks_vec.push_back(b);
-	}
-	return blocks_vec;
+	return reinterpret_cast<internals::EncFileMap*>(pImpl)->blocks();
+}
+uint32_t EncFileMap::maxblocksize() const {
+	return reinterpret_cast<internals::EncFileMap*>(pImpl)->maxblocksize();
+}
+uint32_t EncFileMap::minblocksize() const {
+	return reinterpret_cast<internals::EncFileMap*>(pImpl)->minblocksize();
+}
+uint64_t EncFileMap::filesize() const {
+	return reinterpret_cast<internals::EncFileMap*>(pImpl)->filesize();
+}
+StrongHashType EncFileMap::strong_hash_type() const {
+	return reinterpret_cast<internals::EncFileMap*>(pImpl)->strong_hash_type();
+}
+WeakHashType EncFileMap::weak_hash_type() const {
+	return reinterpret_cast<internals::EncFileMap*>(pImpl)->weak_hash_type();
 }
 
-std::vector<Block> EncFileMap::delta(const EncFileMap& old_filemap){
-	auto delta_ptrlist = reinterpret_cast<internals::EncFileMap*>(pImpl)->delta(*reinterpret_cast<internals::EncFileMap*>(old_filemap.pImpl));
-	std::vector<Block> delta_vec; delta_vec.reserve(delta_ptrlist.size());
-	for(auto block_ptr : delta_ptrlist){
-		Block b; *reinterpret_cast<internals::Block*>(b.get_implementation()) = *block_ptr.get();
-		delta_vec.push_back(b);
-	}
-	return delta_vec;
+/* Setters */
+void EncFileMap::set_blocks(const std::vector<Block>& new_blocks) {
+	reinterpret_cast<internals::EncFileMap*>(pImpl)->set_blocks(new_blocks);
 }
-
-void EncFileMap::from_array(const uint8_t* data, size_t size){
-	reinterpret_cast<internals::EncFileMap*>(pImpl)->from_array(data, size);
+void EncFileMap::set_maxblocksize(uint32_t new_maxblocksize) {
+	reinterpret_cast<internals::EncFileMap*>(pImpl)->set_maxblocksize(new_maxblocksize);
 }
-void EncFileMap::from_string(const std::string& serialized_str){
-	reinterpret_cast<internals::EncFileMap*>(pImpl)->from_string(serialized_str);
+void EncFileMap::set_minblocksize(uint32_t new_minblocksize) {
+	reinterpret_cast<internals::EncFileMap*>(pImpl)->set_minblocksize(new_minblocksize);
 }
-std::string EncFileMap::to_string() const {
-	return reinterpret_cast<internals::EncFileMap*>(pImpl)->to_string();
+void EncFileMap::set_strong_hash_type(StrongHashType new_strong_hash_type) {
+	reinterpret_cast<internals::EncFileMap*>(pImpl)->set_strong_hash_type(new_strong_hash_type);
 }
-
-void EncFileMap::print_debug() const {
-	reinterpret_cast<internals::EncFileMap*>(pImpl)->print_debug();
-}
-void EncFileMap::print_debug_block(const Block& block, int count) const {
-	reinterpret_cast<internals::EncFileMap*>(pImpl)->print_debug_block(*reinterpret_cast<const internals::Block*>(const_cast<Block&>(block).get_implementation()), count);
-}
-
-uint32_t EncFileMap::get_maxblocksize() const {
-	return reinterpret_cast<internals::EncFileMap*>(pImpl)->get_maxblocksize();
-}
-uint32_t EncFileMap::get_minblocksize() const {
-	return reinterpret_cast<internals::EncFileMap*>(pImpl)->get_minblocksize();
-}
-uint64_t EncFileMap::get_filesize() const {
-	return reinterpret_cast<internals::EncFileMap*>(pImpl)->get_filesize();
+void EncFileMap::set_weak_hash_type(WeakHashType new_weak_hash_type) {
+	reinterpret_cast<internals::EncFileMap*>(pImpl)->set_weak_hash_type(new_weak_hash_type);
 }
 
 /* FileMap */
-FileMap::FileMap(){pImpl = nullptr;}
-FileMap::FileMap(const std::vector<uint8_t>& key){
-	pImpl = new internals::FileMap(key);
+FileMap::FileMap() {
+	pImpl = nullptr;
+}
+
+FileMap::FileMap(std::vector<uint8_t> key) {
+	pImpl = new internals::FileMap(std::move(key));
 }
 FileMap::~FileMap(){}
 
-void FileMap::create(const std::string& datafile, uint32_t maxblocksize, uint32_t minblocksize){
-	reinterpret_cast<internals::FileMap*>(pImpl)->create(datafile, maxblocksize, minblocksize);
+void FileMap::create(const std::string& datafile) {
+	reinterpret_cast<internals::FileMap*>(pImpl)->create(datafile);
 }
-FileMap FileMap::update(const std::string& datafile){
+FileMap FileMap::update(const std::string& datafile) {
 	FileMap new_map;
 	auto new_internal = new internals::FileMap(reinterpret_cast<internals::FileMap*>(pImpl)->update(datafile));
 	std::swap(*reinterpret_cast<internals::FileMap*>(pImpl), *new_internal);

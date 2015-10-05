@@ -14,10 +14,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #pragma once
-
-#include "crypto/RsyncChecksum.h"
-#include "EncFileMap.pb.h"
 #include "pch.h"
+#include "../../include/cryptodiff.h"
+#include "crypto/RsyncChecksum.h"
 
 namespace cryptodiff {
 namespace internals {
@@ -25,22 +24,16 @@ namespace internals {
 static std::shared_ptr<spdlog::logger> logger;
 inline void set_logger(std::shared_ptr<spdlog::logger> logger) {cryptodiff::internals::logger = logger;}
 
-enum WeakHashType {RSYNC=0/*, RSYNC64=1*/};
-enum StrongHashType {SHA3_224=0, SHA2_224=1};
+struct DecryptedBlock {
+	Block enc_block_;
 
-struct Block {
-	blob encrypted_hash;	// 28 bytes
-	uint32_t blocksize;	// 4 bytes
-	/* IV is being reused as decrypted_hashes_part is considered not equal plaintext's first 32 bytes */
-	blob iv;	// 16 bytes.
-
-	weakhash_t weak_hash;	// 4 bytes
-	blob strong_hash;	// 28 bytes
-
-	std::array<uint8_t, 32> encrypted_hashes_part;
+	weakhash_t weak_hash_ = 0;	// 4 bytes
+	blob strong_hash_ = {};	// 28 bytes
 
 	void encrypt_hashes(const blob& key);
 	void decrypt_hashes(const blob& key);
+
+	std::string debug_string() const;
 };
 
 class EncFileMap {
@@ -48,35 +41,39 @@ public:
 	EncFileMap();
 	virtual ~EncFileMap();
 
-	std::list<std::shared_ptr<const Block>> blocks() const;
-	std::list<std::shared_ptr<const Block>> delta(const EncFileMap& old_filemap);
+	std::vector<Block> delta(const EncFileMap& old_filemap);
 
-	virtual void from_protobuf(const EncFileMap_s& filemap_s);
-	EncFileMap_s to_protobuf() const;
+	virtual void print_debug_block(const DecryptedBlock& block, int num = 0) const;
 
-	void from_array(const uint8_t* data, size_t size);
-
-	void from_string(const std::string& serialized_str);
-	std::string to_string() const;
-
-	void print_debug() const;
-	virtual void print_debug_block(const Block& block, int num = 0) const;
+	std::string debug_string() const;
+	uint64_t filesize() const {return size_;}
 
 	// Getters
-	uint32_t get_maxblocksize() const {return maxblocksize_;}
-	uint32_t get_minblocksize() const {return minblocksize_;}
+	std::vector<Block> blocks() const;
+	uint32_t maxblocksize() const {return maxblocksize_;}
+	uint32_t minblocksize() const {return minblocksize_;}
+	StrongHashType strong_hash_type() const {return strong_hash_type_;}
+	WeakHashType weak_hash_type() const {return weak_hash_type_;}
 
-	uint64_t get_filesize() const {return size_;}
+	// Setters
+	virtual void set_blocks(const std::vector<Block>& new_blocks);
+	void set_maxblocksize(uint32_t new_maxblocksize) {maxblocksize_ = new_maxblocksize;}
+	void set_minblocksize(uint32_t new_minblocksize) {minblocksize_ = new_minblocksize;}
+	void set_strong_hash_type(StrongHashType new_strong_hash_type) {strong_hash_type_ = new_strong_hash_type;}
+	void set_weak_hash_type(WeakHashType new_weak_hash_type) {weak_hash_type_ = new_weak_hash_type;}
 
 protected:
 	using offset_t = uint64_t;
 
 	// Map data
-	uint32_t maxblocksize_ = 0;
+	uint32_t maxblocksize_ = 2*1024*1024;
 	uint32_t minblocksize_ = 0;
 
+	StrongHashType strong_hash_type_ = SHA3_224;
+	WeakHashType weak_hash_type_ = RSYNC;
+
 	// Other data
-	std::map<offset_t, std::shared_ptr<Block>> offset_blocks_;
+	std::map<offset_t, std::shared_ptr<DecryptedBlock>> offset_blocks_;
 	offset_t size_ = 0;
 };
 

@@ -18,24 +18,20 @@
 namespace cryptodiff {
 namespace internals {
 
-void Block::encrypt_hashes(const blob& key){
+void DecryptedBlock::encrypt_hashes(const blob& key){
 	struct Hashes {
 		uint32_t weak_hash;
 		std::array<uint8_t, 28> strong_hash;
 	} temp_hashes;
-	temp_hashes.weak_hash = boost::endian::native_to_big(weak_hash);
-	std::copy(strong_hash.begin(), strong_hash.end(), temp_hashes.strong_hash.end());
+	temp_hashes.weak_hash = boost::endian::native_to_big(weak_hash_);
+	std::copy(strong_hash_.begin(), strong_hash_.end(), temp_hashes.strong_hash.end());
 
-	auto encrypted_vector = blob((uint8_t*)&temp_hashes, (uint8_t*)&temp_hashes+sizeof(Hashes)) |
-			crypto::AES_CBC(key, iv, false);
-
-	std::move(encrypted_vector.begin(), encrypted_vector.end(), encrypted_hashes_part.begin());
+	enc_block_.encrypted_rsync_hashes_ = blob((uint8_t*)&temp_hashes, (uint8_t*)&temp_hashes+sizeof(Hashes)) |
+			crypto::AES_CBC(key, enc_block_.iv_, false);
 }
 
-void Block::decrypt_hashes(const blob& key){
-	auto decrypted_vector = crypto::AES_CBC(key, iv, false).from(
-					blob(encrypted_hashes_part.begin(), encrypted_hashes_part.end())
-					);
+void DecryptedBlock::decrypt_hashes(const blob& key){
+	auto decrypted_vector = enc_block_.encrypted_rsync_hashes_ | crypto::De<crypto::AES_CBC>(key, enc_block_.iv_, false);
 
 	struct Hashes {
 		uint32_t weak_hash;
@@ -43,99 +39,90 @@ void Block::decrypt_hashes(const blob& key){
 	} temp_hashes;
 	std::move(decrypted_vector.begin(), decrypted_vector.end(), (uint8_t*)&temp_hashes);
 
-	weak_hash = boost::endian::big_to_native(temp_hashes.weak_hash);
-	strong_hash.resize(temp_hashes.strong_hash.size());
-	std::copy(temp_hashes.strong_hash.begin(), temp_hashes.strong_hash.end(), strong_hash.begin());
+	weak_hash_ = boost::endian::big_to_native(temp_hashes.weak_hash);
+	strong_hash_.resize(temp_hashes.strong_hash.size());
+	std::copy(temp_hashes.strong_hash.begin(), temp_hashes.strong_hash.end(), strong_hash_.begin());
+}
+
+std::string DecryptedBlock::debug_string() const {
+	std::ostringstream debug_string_os;
+
+	// Found in encrypted
+	auto encrypted_data_hash_hex = enc_block_.encrypted_data_hash_ | crypto::Hex();
+	auto iv_hex = enc_block_.iv_ | crypto::Hex();
+	auto encrypted_rsync_hashes_hex = enc_block_.encrypted_rsync_hashes_ | crypto::Hex();
+
+	debug_string_os << " Size=" << enc_block_.blocksize_
+					<< " Hash(data)=" << std::string(std::make_move_iterator(encrypted_data_hash_hex.begin()), std::make_move_iterator(encrypted_data_hash_hex.end()))
+					<< " IV=" << std::string(std::make_move_iterator(iv_hex.begin()), std::make_move_iterator(iv_hex.end()))
+					<< " AES(Rsync(Block))=" << std::string(std::make_move_iterator(encrypted_rsync_hashes_hex.begin()), std::make_move_iterator(encrypted_rsync_hashes_hex.end()));
+	if(strong_hash_.empty()){
+		// Found in unencrypted
+		std::ostringstream hex_checksum; hex_checksum << "0x" << std::hex << std::setfill('0') << std::setw(8) << weak_hash_;
+		auto strong_hash_hex = strong_hash_ | crypto::Hex();
+
+		debug_string_os << " Rsync(DecryptedBlock)=" << hex_checksum.str()
+						<< " SHA3(DecryptedBlock)=" << std::string(std::make_move_iterator(strong_hash_hex.begin()), std::make_move_iterator(strong_hash_hex.end()));
+	}
+	return debug_string_os.str();
 }
 
 EncFileMap::EncFileMap() {}
 EncFileMap::~EncFileMap() {}
 
-std::list<std::shared_ptr<const Block>> EncFileMap::blocks() const {
-	std::list<std::shared_ptr<const Block>> blist;
-	auto map_values = offset_blocks_ | boost::adaptors::map_values;
-	std::copy(map_values.begin(), map_values.end(), std::back_inserter(blist));
+std::vector<Block> EncFileMap::blocks() const {
+	std::vector<Block> blist;
+	for(auto block : offset_blocks_){
+		blist.push_back(block.second->enc_block_);
+	}
 	return blist;
 }
 
-std::list<std::shared_ptr<const Block>> EncFileMap::delta(const EncFileMap& old_filemap){
+std::vector<Block> EncFileMap::delta(const EncFileMap& old_filemap){
 	auto strong_hash_less = [](const decltype(offset_blocks_ | boost::adaptors::map_values)::value_type &block1, const decltype(offset_blocks_ | boost::adaptors::map_values)::value_type &block2){
-		return block1->encrypted_hash < block2->encrypted_hash;
+		return block1->enc_block_.encrypted_data_hash_ < block2->enc_block_.encrypted_data_hash_;
 	};
 
-	std::list<std::shared_ptr<const Block>> missing_blocks;
+	std::list<std::shared_ptr<const DecryptedBlock>> missing_blocks;
 	std::set_difference(
-			(offset_blocks_ | boost::adaptors::map_values).begin(), (offset_blocks_ | boost::adaptors::map_values).end(),
-			(old_filemap.offset_blocks_ | boost::adaptors::map_values).begin(), (old_filemap.offset_blocks_ | boost::adaptors::map_values).end(),
+			(offset_blocks_ | boost::adaptors::map_values).begin(),
+			(offset_blocks_ | boost::adaptors::map_values).end(),
+			(old_filemap.offset_blocks_ | boost::adaptors::map_values).begin(),
+			(old_filemap.offset_blocks_ | boost::adaptors::map_values).end(),
 			std::back_inserter(missing_blocks), strong_hash_less);
-	return missing_blocks;
-}
 
-void EncFileMap::from_protobuf(const EncFileMap_s& filemap_s) {
-	size_ = 0;
-	maxblocksize_ = filemap_s.maxblocksize() != 0 ? filemap_s.maxblocksize() : 2*1024*1024 ;	// TODO some sort of defaults and sort of protection against maxblocksize=1
-	minblocksize_ = filemap_s.minblocksize() != 0 ? filemap_s.minblocksize() : 32*1024;
-
-	for(auto block_s : filemap_s.blocks()){
-		auto new_block = std::make_shared<Block>();
-		std::copy(block_s.encrypted_hash().begin(), block_s.encrypted_hash().end(), new_block->encrypted_hash.begin());
-		new_block->blocksize = block_s.blocksize();
-		std::copy(block_s.iv().begin(), block_s.iv().end(), new_block->iv.begin());
-		std::copy(block_s.encrypted_hashes().begin(), block_s.encrypted_hashes().end(), new_block->encrypted_hashes_part.begin());
-
-		offset_blocks_.insert(make_pair(size_, new_block));
-		size_ += block_s.blocksize();
+	std::vector<Block> blist;
+	for(auto block_ptr : missing_blocks){
+		blist.push_back(block_ptr->enc_block_);
 	}
+	return blist;
 }
 
-EncFileMap_s EncFileMap::to_protobuf() const {
-	EncFileMap_s serialized_map;
-	serialized_map.set_maxblocksize(maxblocksize_);
-	serialized_map.set_minblocksize(minblocksize_);
-	for(auto block : offset_blocks_){
-		auto new_block = serialized_map.add_blocks();
-		new_block->set_encrypted_hash(block.second->encrypted_hash.data(), block.second->encrypted_hash.size());
-		new_block->set_blocksize(block.second->blocksize);
-		new_block->set_iv(block.second->iv.data(), block.second->iv.size());
-		new_block->set_encrypted_hashes(block.second->encrypted_hashes_part.data(), block.second->encrypted_hashes_part.size());
-	}
-	return serialized_map;
-}
-
-void EncFileMap::from_array(const uint8_t* data, size_t size){
-	EncFileMap_s filemap_s; filemap_s.ParseFromArray(data, size);
-	from_protobuf(filemap_s);
-}
-
-void EncFileMap::from_string(const std::string& serialized_str) {
-	EncFileMap_s filemap_s; filemap_s.ParseFromString(serialized_str);
-	from_protobuf(filemap_s);
-}
-
-std::string EncFileMap::to_string() const {
-	std::string filemap_str;
-	to_protobuf().SerializeToString(&filemap_str);
-	return filemap_str;
-}
-
-void EncFileMap::print_debug() const {
+std::string EncFileMap::debug_string() const {
+	std::ostringstream os;
 	int i = 0;
 	for(auto block : offset_blocks_){
+		os << "N=" << ++i << " " <<  block.second->debug_string();
 		print_debug_block(*(block.second), ++i);
+	}
+	return os.str();
+}
+
+void EncFileMap::print_debug_block(const DecryptedBlock& block, int num) const {
+	if(logger){
+		logger->debug() << "N=" << num << " " << block.debug_string();
 	}
 }
 
-void EncFileMap::print_debug_block(const Block& block, int num) const {
-	if(logger){
-		auto encrypted_hash_hex = (block.encrypted_hash | crypto::Hex());
-		auto iv_hex = (block.iv | crypto::Hex());
-		auto encrypted_hashes_hex = (block.encrypted_hashes_part | crypto::Hex());
-		logger->debug() << "N=" << num
-				<< " Size=" << block.blocksize
-				<< " SHA3(Enc)=" << std::string(std::make_move_iterator(encrypted_hash_hex.begin()), std::make_move_iterator(encrypted_hash_hex.end()))
-				<< " IV=" << std::string(std::make_move_iterator(iv_hex.begin()), std::make_move_iterator(iv_hex.end()))
+void EncFileMap::set_blocks(const std::vector<Block>& new_blocks) {
+	size_ = 0;
+	offset_blocks_.clear();
+	for(auto block : new_blocks){
+		auto new_block = std::make_shared<DecryptedBlock>();
+		new_block->enc_block_ = block;
 
-				<< " AES(Hashes(Block))=" << std::string(std::make_move_iterator(encrypted_hashes_hex.begin()), std::make_move_iterator(encrypted_hashes_hex.end()));
+		offset_blocks_.insert(make_pair(size_, new_block));
+		size_ += block.blocksize_;
 	}
 }
 

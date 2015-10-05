@@ -15,50 +15,16 @@
  */
 #include "FileMap.h"
 
+#include "crypto/RsyncChecksum.h"
 #include "crypto/StatefulRsyncChecksum.h"
 
 namespace cryptodiff {
 namespace internals {
 
-Block FileMap::process_block(const std::vector<uint8_t>& data) {
-	CryptoPP::AutoSeededRandomPool rng;
-
-	Block block;
-	block.blocksize = data.size();
-	rng.GenerateBlock(block.iv.data(), 16);
-
-	block.encrypted_hash = data | crypto::AES_CBC(key_, block.iv, block.blocksize % 16 == 0) | crypto::SHA3(224);
-
-	block.strong_hash = data | crypto::SHA3(224);
-	block.weak_hash = RsyncChecksum(data.begin(), data.end());
-
-	block.encrypt_hashes(key_);
-
-	return block;
-}
-
-decltype(FileMap::hashed_blocks_)::iterator FileMap::match_block(const blob& datablock, decltype(hashed_blocks_)& blockset, weakhash_t checksum) {
-	auto eqhash_blocks = blockset.equal_range(checksum);
-	blob strong_hash = datablock | crypto::SHA3(224);
-
-	if(eqhash_blocks != std::make_pair(blockset.end(), blockset.end())){
-		for(auto eqhash_block = eqhash_blocks.first; eqhash_block != eqhash_blocks.second; eqhash_block++){
-			if(strong_hash == eqhash_block->second->strong_hash){
-				log_matched(checksum, datablock.size());
-				return eqhash_block;
-			}
-		}
-	}
-	return hashed_blocks_.end();
-}
-
 FileMap::FileMap(blob key) : key_(std::move(key)) {}
 FileMap::~FileMap() {}
 
-void FileMap::create(const std::string& path, uint32_t maxblocksize, uint32_t minblocksize) {
-	maxblocksize_ = maxblocksize;
-	minblocksize_ = minblocksize;
-
+void FileMap::create(const std::string& path) {
 	File datafile(path);
 	size_ = datafile.size();
 
@@ -86,7 +52,7 @@ FileMap FileMap::update(const std::string& path) {
 			return false;
 		}
 	};
-	std::set<uint32_t, greater_pow2_prio> block_sizes; for(auto block : offset_blocks_){block_sizes.insert(block.second->blocksize);}
+	std::set<uint32_t, greater_pow2_prio> block_sizes; for(auto block : offset_blocks_){block_sizes.insert(block.second->enc_block_.blocksize_);}
 
 	//
 	std::list<empty_block_t> empty_blocks;  // contains empty_block_t's
@@ -135,9 +101,10 @@ FileMap FileMap::update(const std::string& path) {
 	}
 
 	for(auto empty_block_it = empty_blocks.begin(); empty_block_it != empty_blocks.end(); empty_block_it++){
-		std::cout << "Unmatched block: off=" << empty_block_it->first << " size=" << empty_block_it->second << std::endl;
+		log_unmatched(empty_block_it->first, empty_block_it->second);
+
 		auto lb_block = upd.offset_blocks_.lower_bound(empty_block_it->first);
-		std::shared_ptr<Block> left_blk, right_blk;
+		std::shared_ptr<DecryptedBlock> left_blk, right_blk;
 		if(lb_block != upd.offset_blocks_.end()){
 			right_blk = lb_block->second;
 		}
@@ -152,34 +119,67 @@ FileMap FileMap::update(const std::string& path) {
 	return upd;
 }
 
-void FileMap::from_protobuf(const EncFileMap_s& filemap_s) {
-	EncFileMap::from_protobuf(filemap_s);
+DecryptedBlock FileMap::process_block(const std::vector<uint8_t>& data) {
+	CryptoPP::AutoSeededRandomPool rng;
+
+	DecryptedBlock block;
+	block.enc_block_.blocksize_ = (uint32_t)data.size();
+	rng.GenerateBlock(block.enc_block_.iv_.data(), 16);
+
+	block.enc_block_.encrypted_data_hash_ = data | crypto::AES_CBC(key_, block.enc_block_.iv_, block.enc_block_.blocksize_ % 16 == 0) | crypto::SHA3(224);
+
+	block.strong_hash_ = data | crypto::SHA3(224);
+	block.weak_hash_ = RsyncChecksum(data.begin(), data.end());
+
+	block.encrypt_hashes(key_);
+
+	return block;
+}
+
+decltype(FileMap::hashed_blocks_)::iterator FileMap::match_block(const blob& datablock, decltype(hashed_blocks_)& blockset, weakhash_t checksum) {
+	auto eqhash_blocks = blockset.equal_range(checksum);
+	blob strong_hash = datablock | crypto::SHA3(224);
+
+	if(eqhash_blocks != std::make_pair(blockset.end(), blockset.end())){
+		for(auto eqhash_block = eqhash_blocks.first; eqhash_block != eqhash_blocks.second; eqhash_block++){
+			if(strong_hash == eqhash_block->second->strong_hash_){
+				log_matched(checksum, datablock.size());
+				return eqhash_block;
+			}
+		}
+	}
+	return hashed_blocks_.end();
+}
+
+void FileMap::set_blocks(const std::vector<Block>& new_blocks) {
+	EncFileMap::set_blocks(new_blocks);
+	hashed_blocks_.clear();
 	for(auto block : offset_blocks_){
 		block.second->decrypt_hashes(key_);
-		hashed_blocks_.insert(std::make_pair(block.second->weak_hash, block.second));
+		hashed_blocks_.insert(std::make_pair(block.second->weak_hash_, block.second));
 	}
 }
 
-std::shared_ptr<Block> FileMap::create_block(File& datafile, empty_block_t unassigned_space, int num){
-	std::shared_ptr<Block> processed_block = std::make_shared<Block>(process_block(datafile.get(unassigned_space.first, unassigned_space.second)));
+std::shared_ptr<DecryptedBlock> FileMap::create_block(File& datafile, empty_block_t unassigned_space, int num){
+	std::shared_ptr<DecryptedBlock> processed_block = std::make_shared<DecryptedBlock>(process_block(datafile.get(unassigned_space.first, unassigned_space.second)));
 
 	print_debug_block(*processed_block, num);
 
-	hashed_blocks_.insert({processed_block->weak_hash, processed_block});	// TODO: We have a great race condition here. MUST BE FIXED!
+	hashed_blocks_.insert({processed_block->weak_hash_, processed_block});	// TODO: We have a great race condition here. MUST BE FIXED!
 	offset_blocks_.insert({unassigned_space.first, processed_block});	// TODO: Also here. Protect hashed_blocks, offset_blocks!
 	return processed_block;
 }
 
 void FileMap::create_neighbormap(File& datafile,
-		std::shared_ptr<Block> left, std::shared_ptr<Block> right,
+		std::shared_ptr<DecryptedBlock> left, std::shared_ptr<DecryptedBlock> right,
 		empty_block_t unassigned_space) {
 	if(!right && !left){
 		fill_with_map(datafile, unassigned_space);
 	}else if(!right){	// Append in the end.
-		if(left->blocksize < maxblocksize_){
-			unassigned_space.first -= left->blocksize;
-			unassigned_space.second += left->blocksize;
-			hashed_blocks_.erase(left->weak_hash);
+		if(left->enc_block_.blocksize_ < maxblocksize_){
+			unassigned_space.first -= left->enc_block_.blocksize_;
+			unassigned_space.second += left->enc_block_.blocksize_;
+			hashed_blocks_.erase(left->weak_hash_);
 			offset_blocks_.erase(unassigned_space.first);
 		}
 		fill_with_map(datafile, unassigned_space);
@@ -227,21 +227,9 @@ void FileMap::log_matched(weakhash_t checksum, size_t size) {
 	}
 }
 
-void FileMap::print_debug_block(const Block& block, int num) const {
+void FileMap::log_unmatched(offset_t offset, uint32_t size) {
 	if(logger){
-		auto encrypted_hash_hex = (block.encrypted_hash | crypto::Hex());
-		auto iv_hex = (block.iv | crypto::Hex());
-		auto encrypted_hashes_hex = (block.encrypted_hashes_part | crypto::Hex());
-
-		std::ostringstream hex_checksum; hex_checksum << "0x" << std::hex << std::setfill('0') << std::setw(8) << block.weak_hash;
-		auto strong_hash_hex = (block.strong_hash | crypto::Hex());
-		logger->debug() << "N=" << num
-				<< " Size=" << block.blocksize
-				<< " SHA3(Enc)=" << std::string(std::make_move_iterator(encrypted_hash_hex.begin()), std::make_move_iterator(encrypted_hash_hex.end()))
-				<< " IV=" << std::string(std::make_move_iterator(iv_hex.begin()), std::make_move_iterator(iv_hex.end()))
-
-				<< " Rsync(Block)=" << hex_checksum.str()
-				<< " SHA3(Block)=" << std::string(std::make_move_iterator(strong_hash_hex.begin()), std::make_move_iterator(strong_hash_hex.end()));
+		logger->debug() << "Unmatched block: off=" << offset << " size=" << size;
 	}
 }
 

@@ -26,32 +26,30 @@ public:
 	FileMap(blob key);
 	virtual ~FileMap();
 
-	void create(const std::string& path, uint32_t maxblocksize = 2*1024*1024, uint32_t minblocksize = 32 * 1024);
+	void create(const std::string& path);
 	FileMap update(const std::string& path);
 
-	virtual void from_protobuf(const EncFileMap_s& filemap_s);
-
-	virtual void print_debug_block(const Block& block, int num = 0) const;
+	void set_blocks(const std::vector<Block>& new_blocks);
 
 protected:
 	using empty_block_t = std::pair<offset_t, uint32_t>;    // offset, length.
 
-	std::unordered_multimap<weakhash_t, std::shared_ptr<Block>> hashed_blocks_;
+	std::unordered_multimap<weakhash_t, std::shared_ptr<DecryptedBlock>> hashed_blocks_;
 
 	blob key_;
 
 	// Subroutines for creating block signature
-	Block process_block(const std::vector<uint8_t>& data);
+	DecryptedBlock process_block(const std::vector<uint8_t>& data);
 
-	//
-	std::shared_ptr<Block> create_block(File& datafile, empty_block_t unassigned_space, int num = 0);
+	std::shared_ptr<DecryptedBlock> create_block(File& datafile, empty_block_t unassigned_space, int num = 0);
 	void fill_with_map(File& datafile, empty_block_t unassigned_space);
-	void create_neighbormap(File& datafile, std::shared_ptr<Block> left, std::shared_ptr<Block> right, empty_block_t unassigned_space);
+	void create_neighbormap(File& datafile, std::shared_ptr<DecryptedBlock> left, std::shared_ptr<DecryptedBlock> right, empty_block_t unassigned_space);
 
 	// Subroutine for matching blockbuf with defined checksum and existing block signature from blockset.
 	decltype(hashed_blocks_)::iterator match_block(const blob& datablock, decltype(hashed_blocks_)& blockset, weakhash_t checksum);
 
 	void log_matched(weakhash_t checksum, size_t size);
+	void log_unmatched(offset_t offset, uint32_t size);
 };
 
 } /* namespace internals */

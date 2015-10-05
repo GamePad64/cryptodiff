@@ -47,13 +47,6 @@ IF (CMAKE_COMPILER_IS_GNUCXX)
 	SET(CMAKE_MODULE_LINKER_FLAGS_RELEASE "${CMAKE_MODULE_LINKER_FLAGS_RELEASE} -flto")
 ENDIF ()
 
-# Protobuf Generator
-find_package(Protobuf REQUIRED)
-if (PROTOBUF_FOUND)
-	file(GLOB_RECURSE PROTO_COMMON_LIST "src/*.proto")
-	PROTOBUF_GENERATE_CPP(PROTO_COMMON_SOURCES PROTO_COMMON_HEADERS ${PROTO_COMMON_LIST})
-endif ()
-
 #============================================================================
 # Binary generation and installation
 #============================================================================
@@ -93,18 +86,23 @@ set(Boost_COMPONENTS
 		system
 		filesystem
 		iostreams)
-
-# set (Boost_USE_STATIC_LIBS ON)
 set(Boost_USE_MULTITHREADED ON)
 
-add_definitions(-DBOOST_LOG_DYN_LINK)
+# shared executable
 find_package(Boost COMPONENTS ${Boost_COMPONENTS} REQUIRED)
+target_link_libraries(cryptodiff-shared ${Boost_LIBRARIES})
+message(STATUS "Boost shared libraries: ${Boost_LIBRARIES}")
 
-if (Boost_FOUND)
-	include_directories(${Boost_INCLUDE_DIRS})
-	target_link_libraries(cryptodiff-shared ${Boost_LIBRARIES})
-	target_link_libraries(cryptodiff-static ${Boost_LIBRARIES})
-endif ()
+# reset
+UNSET(Boost_LIBRARIES)
+SET(Boost_USE_STATIC_LIBS ON)
+
+# static executable
+find_package(Boost COMPONENTS ${Boost_COMPONENTS} REQUIRED)
+target_link_libraries(cryptodiff-static ${Boost_LIBRARIES})
+message(STATUS "Boost static libraries: ${Boost_LIBRARIES}")
+
+include_directories(${Boost_INCLUDE_DIRS})
 # /Boost
 
 # CryptoPP
@@ -116,16 +114,6 @@ if (CRYPTOPP_FOUND)
 	target_link_libraries(cryptodiff-static ${CRYPTOPP_LIBRARIES})
 endif ()
 # /CryptoPP
-
-# Protobuf
-# Found lately
-
-if (PROTOBUF_FOUND)
-	include_directories(${PROTOBUF_INCLUDE_DIRS})
-	target_link_libraries(cryptodiff-shared ${PROTOBUF_LIBRARIES})
-	target_link_libraries(cryptodiff-static ${PROTOBUF_LIBRARIES})
-endif ()
-# /Protobuf
 
 #============================================================================
 # Documentation generation

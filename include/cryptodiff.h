@@ -18,13 +18,13 @@
 #define CRYPTODIFF_H_
 
 #if BUILDING_CRYPTODIFF && defined _MSC_VER
-#define CRYPTODIFF_DLL_EXPORTED __declspec(dllexport)
+#define CRYPTODIFF_EXPORTED __declspec(dllexport)
 #elif BUILDING_FILEMAP
-#define CRYPTODIFF_DLL_EXPORTED __attribute__((__visibility__("default")))
+#define CRYPTODIFF_EXPORTED __attribute__((__visibility__("default")))
 #elif defined _MSC_VER
-#define CRYPTODIFF_DLL_EXPORTED __declspec(dllimport)
+#define CRYPTODIFF_EXPORTED __declspec(dllimport)
 #else
-#define CRYPTODIFF_DLL_EXPORTED
+#define CRYPTODIFF_EXPORTED
 #endif
 
 #include <cstdint>
@@ -39,43 +39,19 @@ class logger;
 
 namespace cryptodiff {
 
-void set_logger(std::shared_ptr<spdlog::logger> logger);
+enum WeakHashType : uint8_t {RSYNC=0/*, RSYNC64=1*/};
+enum StrongHashType : uint8_t {SHA3_224=0, SHA2_224=1};
 
-class CRYPTODIFF_DLL_EXPORTED Block {
-public:
-	Block();
-	Block(const Block& block);
-	Block(Block&& block);
-	Block& operator=(const Block& block);
-	Block& operator=(Block&& block);
-	~Block();
+void CRYPTODIFF_EXPORTED set_logger(std::shared_ptr<spdlog::logger> logger);
 
-	struct Hashes {
-		uint32_t weak_hash;	// 4 bytes
-		std::array<uint8_t, 28> strong_hash;	// 28 bytes
-	};
-
-	void encrypt_hashes(const std::vector<uint8_t>& key);
-	void decrypt_hashes(const std::vector<uint8_t>& key);
-
-	/* Getters */
-	const std::vector<uint8_t>& get_encrypted_hash() const;
-
-	uint32_t get_blocksize() const;
-	const std::vector<uint8_t>& get_iv() const;
-
-	const std::array<uint8_t, sizeof(Hashes)>& get_encrypted_hashes_part() const;
-	uint32_t get_decrypted_weak_hash() const;
-	const std::vector<uint8_t>& get_decrypted_strong_hash() const;
-
-	/* implementation */
-	inline void* get_implementation(){return pImpl;}
-
-protected:
-	void* pImpl;
+struct CRYPTODIFF_EXPORTED Block {
+	std::vector<uint8_t> encrypted_data_hash_;	// >=28 bytes; =28 bytes with SHA3_224 or SHA2_224
+	std::vector<uint8_t> encrypted_rsync_hashes_;	// >=32 bytes
+	uint32_t blocksize_;	// 4 bytes.
+	std::vector<uint8_t> iv_;	// =16 bytes, IV is being reused as decrypted_hashes_part is considered not equal plaintext's first 32 bytes
 };
 
-class CRYPTODIFF_DLL_EXPORTED EncFileMap {
+class CRYPTODIFF_EXPORTED EncFileMap {
 public:
 	EncFileMap();
 	EncFileMap(const EncFileMap& encfilemap);
@@ -84,20 +60,24 @@ public:
 	EncFileMap& operator=(EncFileMap&& encfilemap);
 	virtual ~EncFileMap();
 
-	std::vector<Block> blocks() const;
 	std::vector<Block> delta(const EncFileMap& old_filemap);
 
-	void from_array(const uint8_t* data, size_t size);
+	std::string debug_string() const;
+	uint64_t filesize() const;
 
-	void from_string(const std::string& serialized_str);
-	std::string to_string() const;
+	// Getters
+	std::vector<Block> blocks() const;
+	uint32_t maxblocksize() const;
+	uint32_t minblocksize() const;
+	StrongHashType strong_hash_type() const;
+	WeakHashType weak_hash_type() const;
 
-	void print_debug() const;
-	void print_debug_block(const Block& block, int count = 0) const;
-
-	uint32_t get_maxblocksize() const;
-	uint32_t get_minblocksize() const;
-	uint64_t get_filesize() const;
+	// Setters
+	void set_blocks(const std::vector<Block>&);
+	void set_maxblocksize(uint32_t);
+	void set_minblocksize(uint32_t);
+	void set_strong_hash_type(StrongHashType);
+	void set_weak_hash_type(WeakHashType);
 
 	/* implementation */
 	inline void* get_implementation(){return pImpl;}
@@ -106,14 +86,14 @@ protected:
 	void* pImpl;
 };
 
-class CRYPTODIFF_DLL_EXPORTED FileMap : public EncFileMap {
+class CRYPTODIFF_EXPORTED FileMap : public EncFileMap {
 protected:
 	FileMap();
 public:
-	FileMap(const std::vector<uint8_t>& key);
+	FileMap(std::vector<uint8_t> key);
 	virtual ~FileMap();
 
-	void create(const std::string& datafile, uint32_t maxblocksize = 2*1024*1024, uint32_t minblocksize = 32 * 1024);
+	void create(const std::string& datafile);
 	FileMap update(const std::string& datafile);
 };
 
