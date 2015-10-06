@@ -24,7 +24,7 @@ void DecryptedBlock::encrypt_hashes(const blob& key){
 		std::array<uint8_t, 28> strong_hash;
 	} temp_hashes;
 	temp_hashes.weak_hash = boost::endian::native_to_big(weak_hash_);
-	std::copy(strong_hash_.begin(), strong_hash_.end(), temp_hashes.strong_hash.end());
+	std::copy(strong_hash_.begin(), strong_hash_.begin()+std::min(strong_hash_.size(), (size_t)28), temp_hashes.strong_hash.end());
 
 	enc_block_.encrypted_rsync_hashes_ = blob((uint8_t*)&temp_hashes, (uint8_t*)&temp_hashes+sizeof(Hashes)) |
 			crypto::AES_CBC(key, enc_block_.iv_, false);
