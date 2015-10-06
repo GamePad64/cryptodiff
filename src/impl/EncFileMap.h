@@ -21,8 +21,8 @@
 namespace cryptodiff {
 namespace internals {
 
-static std::shared_ptr<spdlog::logger> logger;
-inline void set_logger(std::shared_ptr<spdlog::logger> logger) {cryptodiff::internals::logger = logger;}
+extern std::shared_ptr<spdlog::logger> logger;
+inline void set_logger(std::shared_ptr<spdlog::logger> new_logger) {logger = new_logger;}
 
 struct DecryptedBlock {
 	Block enc_block_;
