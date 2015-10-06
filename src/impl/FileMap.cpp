@@ -124,6 +124,8 @@ DecryptedBlock FileMap::process_block(const std::vector<uint8_t>& data) {
 
 	DecryptedBlock block;
 	block.enc_block_.blocksize_ = (uint32_t)data.size();
+
+	block.enc_block_.iv_.resize(16);
 	rng.GenerateBlock(block.enc_block_.iv_.data(), 16);
 
 	block.enc_block_.encrypted_data_hash_ = data | crypto::AES_CBC(key_, block.enc_block_.iv_, block.enc_block_.blocksize_ % 16 == 0) | crypto::SHA3(224);
