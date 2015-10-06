@@ -17,52 +17,13 @@
 #include <cstdint>
 #include <string>
 #include <vector>
+#include <iostream>
+#include <fstream>
+#include <mutex>
 #include <boost/noncopyable.hpp>
-
-#define FORCE_FILE_BACKEND 1
-
-#ifndef FORCE_FILE_BACKEND
-#	if UINTPTR_MAX == 0xffffffffffffffff
-#		define FILE_BACKEND 1	// boost::iostreams::mapped_file_source
-#	elif UINTPTR_MAX == 0xffffffff
-#		define FILE_BACKEND 2	// std::ifstream
-#	endif
-#else
-#	define FILE_BACKEND FORCE_FILE_BACKEND
-#endif
-
-#if FILE_BACKEND == 1
-#	include <boost/iostreams/device/mapped_file.hpp>
-#elif FILE_BACKEND == 2
-#	include <iostream>
-#	include <fstream>
-#	include <mutex>
-#endif
 
 namespace cryptodiff {
 namespace internals {
-
-#if FILE_BACKEND == 1
-
-class File : boost::noncopyable {
-public:
-	File(const std::string& path) : mapped_file_(path) {}
-	virtual ~File() {mapped_file_.close();}
-
-	uint64_t size() {return mapped_file_.size();}
-	std::vector<uint8_t> get(uint64_t offset, uint32_t size){
-		const uint8_t* begin = reinterpret_cast<const uint8_t*>(mapped_file_.data())+offset;
-		const uint8_t* end = begin+size;
-		return std::vector<uint8_t>(begin, end);
-	}
-	uint8_t get(uint64_t offset) {
-		return *(mapped_file_.data());
-	}
-private:
-	boost::iostreams::mapped_file_source mapped_file_;
-};
-
-#elif FILE_BACKEND == 2
 
 class File : boost::noncopyable {
 public:
@@ -96,8 +57,6 @@ private:
 	std::ifstream ifs_;
 	std::mutex mutex_;
 };
-
-#endif
 
 } /* namespace internals */
 } /* namespace cryptodiff */
