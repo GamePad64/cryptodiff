@@ -67,7 +67,7 @@ protected:
 
 	// Map data
 	uint32_t maxblocksize_ = 2*1024*1024;
-	uint32_t minblocksize_ = 0;
+	uint32_t minblocksize_ = 32*1024;
 
 	StrongHashType strong_hash_type_ = SHA3_224;
 	WeakHashType weak_hash_type_ = RSYNC;

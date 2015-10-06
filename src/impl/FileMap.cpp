@@ -21,7 +21,7 @@
 namespace cryptodiff {
 namespace internals {
 
-FileMap::FileMap(blob key) : key_(std::move(key)) {}
+FileMap::FileMap(blob key) : EncFileMap(), key_(std::move(key)) {}
 FileMap::~FileMap() {}
 
 void FileMap::create(const std::string& path) {
