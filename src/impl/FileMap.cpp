@@ -128,9 +128,9 @@ DecryptedBlock FileMap::process_block(const std::vector<uint8_t>& data) {
 	block.enc_block_.iv_.resize(16);
 	rng.GenerateBlock(block.enc_block_.iv_.data(), 16);
 
-	block.enc_block_.encrypted_data_hash_ = data | crypto::AES_CBC(key_, block.enc_block_.iv_, block.enc_block_.blocksize_ % 16 != 0) | crypto::SHA3(224);
+	block.enc_block_.encrypted_data_hash_ = compute_strong_hash( encrypt_block(data, key_, block.enc_block_.iv_) , strong_hash_type_);
 
-	block.strong_hash_ = data | crypto::SHA3(224);
+	block.strong_hash_ = compute_strong_hash(data, strong_hash_type_);
 	block.weak_hash_ = RsyncChecksum(data.begin(), data.end());
 
 	block.encrypt_hashes(key_);
@@ -140,7 +140,7 @@ DecryptedBlock FileMap::process_block(const std::vector<uint8_t>& data) {
 
 decltype(FileMap::hashed_blocks_)::iterator FileMap::match_block(const blob& datablock, decltype(hashed_blocks_)& blockset, weakhash_t checksum) {
 	auto eqhash_blocks = blockset.equal_range(checksum);
-	blob strong_hash = datablock | crypto::SHA3(224);
+	blob strong_hash = compute_strong_hash(datablock, strong_hash_type_);
 
 	if(eqhash_blocks != std::make_pair(blockset.end(), blockset.end())){
 		for(auto eqhash_block = eqhash_blocks.first; eqhash_block != eqhash_blocks.second; eqhash_block++){

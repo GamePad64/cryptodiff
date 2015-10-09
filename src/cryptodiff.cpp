@@ -23,6 +23,22 @@ void set_logger(std::shared_ptr<spdlog::logger> logger) {
 	internals::set_logger(logger);
 }
 
+std::vector<uint8_t> encrypt_block(const std::vector<uint8_t>& datablock, const std::vector<uint8_t>& key, const std::vector<uint8_t>& iv) {
+	return datablock | crypto::AES_CBC(key, iv, datablock.size() % 16 != 0);
+}
+
+std::vector<uint8_t> decrypt_block(const std::vector<uint8_t>& datablock, uint32_t blocksize, const std::vector<uint8_t>& key, const std::vector<uint8_t>& iv) {
+	return datablock | crypto::De<crypto::AES_CBC>(key, iv, blocksize % 16 != 0);
+}
+
+std::vector<uint8_t> compute_strong_hash(const std::vector<uint8_t>& data, StrongHashType type) {
+	switch(type){
+		case SHA3_224: return data | crypto::SHA3(224);
+		case SHA2_224: return data | crypto::SHA2(224);
+		default: return std::vector<uint8_t>();	// TODO: throw some exception.
+	}
+}
+
 /* EncFileMap */
 EncFileMap::EncFileMap(){
 	pImpl = new internals::EncFileMap();

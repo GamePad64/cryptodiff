@@ -64,7 +64,7 @@ std::string DecryptedBlock::debug_string() const {
 		auto strong_hash_hex = strong_hash_ | crypto::Hex();
 
 		debug_string_os << " Rsync(DecryptedBlock)=" << hex_checksum.str()
-						<< " SHA3(DecryptedBlock)=" << std::string(std::make_move_iterator(strong_hash_hex.begin()), std::make_move_iterator(strong_hash_hex.end()));
+						<< " Hash(DecryptedBlock)=" << std::string(std::make_move_iterator(strong_hash_hex.begin()), std::make_move_iterator(strong_hash_hex.end()));
 	}
 	return debug_string_os.str();
 }

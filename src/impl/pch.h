@@ -18,6 +18,7 @@
 // LVCrypto
 #include <lvcrypto/HMAC-SHA3.h>
 #include <lvcrypto/SHA3.h>
+#include <lvcrypto/SHA2.h>
 #include <lvcrypto/Base64.h>
 #include <lvcrypto/Base32.h>
 #include <lvcrypto/Hex.h>

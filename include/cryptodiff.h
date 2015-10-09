@@ -44,6 +44,11 @@ enum StrongHashType : uint8_t {SHA3_224=0, SHA2_224=1};
 
 void CRYPTODIFF_EXPORTED set_logger(std::shared_ptr<spdlog::logger> logger);
 
+std::vector<uint8_t> CRYPTODIFF_EXPORTED encrypt_block(const std::vector<uint8_t>& datablock, const std::vector<uint8_t>& key, const std::vector<uint8_t>& iv);
+std::vector<uint8_t> CRYPTODIFF_EXPORTED decrypt_block(const std::vector<uint8_t>& datablock, uint32_t blocksize, const std::vector<uint8_t>& key, const std::vector<uint8_t>& iv);
+
+std::vector<uint8_t> CRYPTODIFF_EXPORTED compute_strong_hash(const std::vector<uint8_t>& data, StrongHashType type);
+
 struct CRYPTODIFF_EXPORTED Block {
 	std::vector<uint8_t> encrypted_data_hash_;	// >=28 bytes; =28 bytes with SHA3_224 or SHA2_224
 	std::vector<uint8_t> encrypted_rsync_hashes_;	// >=32 bytes
