@@ -32,11 +32,15 @@ void FileMap::create(const std::string& path) {
 }
 
 FileMap FileMap::update(const std::string& path) {
+	if(maxblocksize_ == 0) throw error("Maximum block size must be > 0");
+
 	File datafile(path);
 
 	FileMap upd(key_); upd.size_ = datafile.size();
 	upd.maxblocksize_ = maxblocksize_;
 	upd.minblocksize_ = minblocksize_;
+	upd.strong_hash_type_ = strong_hash_type_;
+	upd.weak_hash_type_ = weak_hash_type_;
 
 	auto blocks_left = hashed_blocks_;       // This will move into upd one by one.
 
@@ -72,7 +76,7 @@ FileMap FileMap::update(const std::string& path) {
 				matched_it = match_block(blockbuf, blocks_left, checksum);
 				if(matched_it != blocks_left.end()){
 					upd.offset_blocks_.insert(std::make_pair(offset, matched_it->second));
-					upd.hashed_blocks_.insert(std::make_pair(checksum, matched_it->second));
+					upd.hashed_blocks_.insert(std::make_pair((weakhash_t)checksum, matched_it->second));
 					if(offset == empty_block_it->first && blocksize == empty_block_it->second){     // Matched block fits perfectly in empty block
 						empty_blocks.erase(empty_block_it++);
 					}else if(offset == empty_block_it->first){      // Matched block is in the beginning of empty block

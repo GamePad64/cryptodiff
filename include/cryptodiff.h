@@ -49,6 +49,11 @@ std::vector<uint8_t> CRYPTODIFF_EXPORTED decrypt_block(const std::vector<uint8_t
 
 std::vector<uint8_t> CRYPTODIFF_EXPORTED compute_strong_hash(const std::vector<uint8_t>& data, StrongHashType type);
 
+struct error : std::runtime_error {
+	error(const char* what) : std::runtime_error(what) {}
+	error() : error("Cryptodiff error") {}
+};
+
 struct CRYPTODIFF_EXPORTED Block {
 	std::vector<uint8_t> encrypted_data_hash_;	// >=28 bytes; =28 bytes with SHA3_224 or SHA2_224
 	std::vector<uint8_t> encrypted_rsync_hashes_;	// >=32 bytes

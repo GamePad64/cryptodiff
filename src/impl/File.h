@@ -27,7 +27,10 @@ namespace internals {
 
 class File : boost::noncopyable {
 public:
-	File(const std::string& path) : ifs_(path, std::ios_base::in | std::ios_base::binary) {}
+	File(const std::string& path) : path_(path) {
+		ifs_.exceptions(std::ios::failbit | std::ios::badbit);
+		ifs_.open(path, std::ios_base::in | std::ios_base::binary);
+	}
 	virtual ~File() {}
 
 	uint64_t size() {
@@ -54,6 +57,7 @@ public:
 		return ifs_.get();
 	}
 private:
+	const std::string path_;
 	std::ifstream ifs_;
 	std::mutex mutex_;
 };
