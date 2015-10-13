@@ -1,7 +1,7 @@
 Source: cryptodiff
 Priority: optional
 Maintainer: Alexander Shishenko <alex@shishenko.com>
-Build-Depends: debhelper (>= 9), cmake, protobuf-compiler, libboost-all-dev, libprotobuf-dev (>= 3)
+Build-Depends: debhelper (>= 9), cmake, protobuf-compiler, libboost-all-dev, libprotobuf-dev (>= 3), libcrypto++-dev (>= 5.6.2~0)
 Standards-Version: 3.9.6
 Section: libs
 Homepage: https://librevault.com
@@ -12,19 +12,19 @@ Package: libcryptodiff-dev
 Section: libdevel
 Architecture: all
 Depends: libcryptodiff1 (= ${binary:Version}), ${misc:Depends}
-Description: <insert up to 60 chars description>
- <insert long description, indented with spaces>
+Description: Cryptodiff delta-encoding algorithm library
+ Cryptodiff delta-encoding algorithm library
  
 Package: libcryptodiff1-dbg
 Section: debug
 Architecture: any
 Priority: extra
 Depends: libcryptodiff1 (= ${binary:Version}), ${misc:Depends}
-Description: <insert up to 60 chars description>
- <insert long description, indented with spaces>
+Description: Cryptodiff delta-encoding algorithm library
+ Cryptodiff delta-encoding algorithm library
 
 Package: libcryptodiff1
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Description: <insert up to 60 chars description>
- <insert long description, indented with spaces>
+Description: Cryptodiff delta-encoding algorithm library
+ Cryptodiff delta-encoding algorithm library
