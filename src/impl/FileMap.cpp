@@ -144,9 +144,9 @@ DecryptedBlock FileMap::process_block(const std::vector<uint8_t>& data) {
 
 decltype(FileMap::hashed_blocks_)::iterator FileMap::match_block(const blob& datablock, decltype(hashed_blocks_)& blockset, weakhash_t checksum) {
 	auto eqhash_blocks = blockset.equal_range(checksum);
-	blob strong_hash = compute_strong_hash(datablock, strong_hash_type_);
 
-	if(eqhash_blocks != std::make_pair(blockset.end(), blockset.end())){
+	if(eqhash_blocks.first != eqhash_blocks.second){
+		blob strong_hash = compute_strong_hash(datablock, strong_hash_type_);
 		for(auto eqhash_block = eqhash_blocks.first; eqhash_block != eqhash_blocks.second; eqhash_block++){
 			if(strong_hash == eqhash_block->second->strong_hash_){
 				log_matched(checksum, datablock.size());
