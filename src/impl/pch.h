@@ -24,9 +24,6 @@
 #include <lvcrypto/Hex.h>
 #include <lvcrypto/AES_CBC.h>
 
-// spdlog
-#include <spdlog/spdlog.h>
-
 // Crypto++
 #include <cryptopp/aes.h>
 #include <cryptopp/ccm.h>
@@ -56,6 +53,9 @@
 
 #include <boost/predef.h>
 #include <boost/range/adaptor/map.hpp>
+
+// spdlog
+#include <spdlog/spdlog.h>
 
 // Standard C++ Libraries
 #include <array>

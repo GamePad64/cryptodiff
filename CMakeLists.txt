@@ -40,6 +40,9 @@ elseif(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-long-long")
 	#SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 --coverage")
 endif ()
+if (WIN32)
+	add_definitions(-D_WIN32_WINNT=0x600)
+endif()
 
 IF (CMAKE_COMPILER_IS_GNUCXX)
 	# Use -flto flag to enable GCC's link-time optimization.
@@ -82,6 +85,12 @@ install(FILES include/cryptodiff.h DESTINATION include)
 #============================================================================
 # Third-party Libraries
 #============================================================================
+
+# WinSock
+if (WIN32)
+	target_link_libraries(cryptodiff-shared ws2_32)
+	target_link_libraries(cryptodiff-static ws2_32)
+endif()
 
 # Boost
 set(Boost_COMPONENTS
