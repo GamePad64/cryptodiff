@@ -26,6 +26,8 @@ SET(CMAKE_CXX_EXTENSIONS OFF)
 
 include_directories(include)
 include_directories(contrib/include)
+include_directories(contrib/include/lvcrypto)
+include_directories(contrib/spdlog/include)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 if (MSVC)
