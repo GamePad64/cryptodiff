@@ -1,98 +1,98 @@
-project(cryptodiff)
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 3.2)
+project(cryptodiff VERSION 0.9.0)
 
 include(GNUInstallDirs)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
 #============================================================================
-# Compilation options
+# Settable options
 #============================================================================
 
-#-- Add an Option to toggle the generation of the API documentation
 option(SINGLE_THREADED "Build single-threaded version of the library" OFF)
-if (SINGLE_THREADED)
+option(BUILD_DOCUMENTATION "Use Doxygen to create the HTML based API documentation" OFF)
+
+#============================================================================
+# Internal compiler options
+#============================================================================
+
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+include_directories(contrib)
+
+if(SINGLE_THREADED)
 	add_definitions(-DSINGLE_THREADED)
-endif ()
+endif()
 
-#============================================================================
-# Compiler properties
-#============================================================================
-
-### Setting compiler properties
-SET(CMAKE_CXX_STANDARD_REQUIRED ON)
-SET(CMAKE_CXX_STANDARD 14)
-SET(CMAKE_CXX_EXTENSIONS OFF)
-
-include_directories(include)
-include_directories(contrib/include)
-include_directories(contrib/include/lvcrypto)
-include_directories(contrib/spdlog/include)
-include_directories(${CMAKE_CURRENT_BINARY_DIR})
-
-if (MSVC)
+if(MSVC)
 	# Force to always compile with W4
-	if (CMAKE_CXX_FLAGS MATCHES "/W[0-4]")
+	if(CMAKE_CXX_FLAGS MATCHES "/W[0-4]")
 		string(REGEX REPLACE "/W[0-4]" "/W4" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 	else()
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W4")
-	endif ()
+	endif()
 elseif(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
-	# Update if necessary
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-long-long")
-	#SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 --coverage")
-endif ()
-if (WIN32)
+endif()
+if(WIN32)
 	add_definitions(-D_WIN32_WINNT=0x600)
 endif()
 
-IF (CMAKE_COMPILER_IS_GNUCXX)
+if(CMAKE_COMPILER_IS_GNUCXX)
 	# Use -flto flag to enable GCC's link-time optimization.
-	SET(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -flto")
-	SET(CMAKE_C_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -flto")
-	SET(CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE} -flto")
-	SET(CMAKE_MODULE_LINKER_FLAGS_RELEASE "${CMAKE_MODULE_LINKER_FLAGS_RELEASE} -flto")
-ENDIF ()
+	set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -flto")
+	set(CMAKE_C_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -flto")
+	set(CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE} -flto")
+	set(CMAKE_MODULE_LINKER_FLAGS_RELEASE "${CMAKE_MODULE_LINKER_FLAGS_RELEASE} -flto")
+endif()
 
 #============================================================================
-# Binary generation and installation
+# Sources & headers
 #============================================================================
 
-file(GLOB_RECURSE LIBRARY_SRCS "src/*")
-list(APPEND LIBRARY_SRCS ${PROTO_COMMON_SOURCES})
-list(APPEND LIBRARY_SRCS ${PROTO_COMMON_HEADERS})
-
-add_library(cryptodiff-shared SHARED ${LIBRARY_SRCS})
-add_library(cryptodiff-static STATIC ${LIBRARY_SRCS})
-
-SET_TARGET_PROPERTIES(cryptodiff-shared
-		PROPERTIES
-		VERSION 0.0.1
-		SOVERSION 1
-		OUTPUT_NAME cryptodiff
-)
-
-SET_TARGET_PROPERTIES(cryptodiff-static
-		PROPERTIES
-		VERSION 0.0.1
-		SOVERSION 1
-		OUTPUT_NAME cryptodiff
-)
-
-install(TARGETS cryptodiff-shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
-install(TARGETS cryptodiff-static DESTINATION ${CMAKE_INSTALL_LIBDIR})
-
-install(FILES include/cryptodiff.h DESTINATION include)
+file(GLOB_RECURSE cryptodiff_SOURCES "src/*.cpp")
+file(GLOB_RECURSE cryptodiff_HEADERS "include/*.h")
 
 #============================================================================
-# Third-party Libraries
+# Compile targets
+#============================================================================
+
+add_library(cryptodiff-object OBJECT ${cryptodiff_SOURCES})
+set_target_properties(cryptodiff-object PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
+
+add_library(cryptodiff-static STATIC $<TARGET_OBJECTS:cryptodiff-object>)
+add_library(cryptodiff-shared SHARED $<TARGET_OBJECTS:cryptodiff-object>)
+
+target_include_directories(cryptodiff-static PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include> $<INSTALL_INTERFACE:include>)
+target_include_directories(cryptodiff-shared PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include> $<INSTALL_INTERFACE:include>)
+
+if(NOT MSVC)
+	set_target_properties(cryptodiff-static PROPERTIES
+			OUTPUT_NAME cryptodiff
+			)
+
+	set_target_properties(cryptodiff-shared PROPERTIES
+			SOVERSION ${cryptodiff_VERSION_MAJOR}
+			OUTPUT_NAME cryptodiff
+			)
+endif()
+
+#============================================================================
+# Third-party libraries
 #============================================================================
 
 # WinSock
-if (WIN32)
-	target_link_libraries(cryptodiff-shared ws2_32)
+if(WIN32)
 	target_link_libraries(cryptodiff-static ws2_32)
+	target_link_libraries(cryptodiff-shared ws2_32)
 endif()
+
+# Threads
+find_package(Threads)
+target_link_libraries(cryptodiff-static ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(cryptodiff-shared ${CMAKE_THREAD_LIBS_INIT})
 
 # Boost
 set(Boost_COMPONENTS
@@ -104,46 +104,51 @@ set(Boost_USE_MULTITHREADED ON)
 # shared executable
 find_package(Boost COMPONENTS ${Boost_COMPONENTS} REQUIRED)
 target_link_libraries(cryptodiff-shared ${Boost_LIBRARIES})
+target_include_directories(cryptodiff-shared PRIVATE ${Boost_INCLUDE_DIRS})
 message(STATUS "Boost shared libraries: ${Boost_LIBRARIES}")
 
 # reset
-UNSET(Boost_LIBRARIES)
-SET(Boost_USE_STATIC_LIBS ON)
+unset(Boost_LIBRARIES)
+set(Boost_USE_STATIC_LIBS ON)
 
 # static executable
 find_package(Boost COMPONENTS ${Boost_COMPONENTS} REQUIRED)
 target_link_libraries(cryptodiff-static ${Boost_LIBRARIES})
+target_include_directories(cryptodiff-static PRIVATE ${Boost_INCLUDE_DIRS})
 message(STATUS "Boost static libraries: ${Boost_LIBRARIES}")
-
-include_directories(${Boost_INCLUDE_DIRS})
 # /Boost
 
 # CryptoPP
 find_package(CryptoPP REQUIRED)
 
-if (CRYPTOPP_FOUND)
-	include_directories(${CRYPTOPP_INCLUDE_DIRS})
-	target_link_libraries(cryptodiff-shared ${CRYPTOPP_LIBRARIES})
-	target_link_libraries(cryptodiff-static ${CRYPTOPP_LIBRARIES})
-endif ()
+target_link_libraries(cryptodiff-static cryptopp-static)
+target_link_libraries(cryptodiff-shared cryptopp-shared)
 # /CryptoPP
 
 #============================================================================
-# Documentation generation
+# Doxygen documentation
 #============================================================================
+if(BUILD_DOCUMENTATION)
+	find_package(Doxygen REQUIRED)
 
-#-- Add an Option to toggle the generation of the API documentation
-option(BUILD_DOCUMENTATION "Use Doxygen to create the HTML based API documentation" OFF)
-if (BUILD_DOCUMENTATION)
-	FIND_PACKAGE(Doxygen)
-	if (NOT DOXYGEN_FOUND)
-		message(FATAL_ERROR
-				"Doxygen is needed to build the documentation. Please install it correctly")
-	endif ()
-	#-- Configure the Template Doxyfile for our specific project
 	configure_file(Doxyfile.in ${PROJECT_BINARY_DIR}/Doxyfile @ONLY IMMEDIATE)
-	#-- Add a custom target to run Doxygen when ever the project is built
 	add_custom_target(docs ALL COMMAND ${DOXYGEN_EXECUTABLE} ${PROJECT_BINARY_DIR}/Doxyfile SOURCES ${PROJECT_BINARY_DIR}/Doxyfile)
-	# IF you do NOT want the documentation to be generated EVERY time you build the project
-	# then leave out the 'ALL' keyword from the above command.
-endif ()
+endif()
+
+#============================================================================
+# Install
+#============================================================================
+set(export_name "cryptodiff-targets")
+
+# Runtime package
+install(TARGETS cryptodiff-shared EXPORT ${export_name} DESTINATION ${CMAKE_INSTALL_LIBDIR})
+
+# Development package
+install(TARGETS cryptodiff-static EXPORT ${export_name} DESTINATION ${CMAKE_INSTALL_LIBDIR})
+install(FILES ${cryptodiff_HEADERS} DESTINATION include)
+
+# Cmake Package
+include(CMakePackageConfigHelpers)
+write_basic_package_version_file("${PROJECT_BINARY_DIR}/cryptodiff-config-version.cmake" COMPATIBILITY SameMajorVersion)
+install(FILES cmake/cryptodiff-config.cmake ${PROJECT_BINARY_DIR}/cryptodiff-config-version.cmake DESTINATION "lib/cmake/cryptodiff")
+install(EXPORT ${export_name} DESTINATION "lib/cmake/cryptodiff")
