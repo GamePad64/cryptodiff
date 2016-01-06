@@ -23,6 +23,10 @@ void set_logger(std::shared_ptr<spdlog::logger> logger) {
 	internals::set_logger(logger);
 }
 
+void set_io_service(std::shared_ptr<boost::asio::io_service> io_service_ptr) {
+	internals::set_io_service(io_service_ptr);
+}
+
 std::vector<uint8_t> encrypt_block(const std::vector<uint8_t>& datablock, const std::vector<uint8_t>& key, const std::vector<uint8_t>& iv) {
 	return datablock | crypto::AES_CBC(key, iv, datablock.size() % 16 != 0);
 }

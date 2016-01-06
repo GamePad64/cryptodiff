@@ -19,6 +19,9 @@ namespace cryptodiff {
 namespace internals {
 
 std::shared_ptr<spdlog::logger> logger = std::shared_ptr<spdlog::logger>();
+std::shared_ptr<boost::asio::io_service> io_service_ptr = std::make_shared<boost::asio::io_service>();
+std::unique_ptr<boost::asio::io_service::work> io_service_work = std::make_unique<boost::asio::io_service::work>(*io_service_ptr);
+std::thread io_service_thread = std::thread(std::bind((size_t(boost::asio::io_service::*)())&boost::asio::io_service::run, io_service_ptr));
 
 void DecryptedBlock::encrypt_hashes(const blob& key){
 	struct Hashes {

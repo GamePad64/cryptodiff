@@ -9,7 +9,6 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 # Settable options
 #============================================================================
 
-option(SINGLE_THREADED "Build single-threaded version of the library" OFF)
 option(BUILD_DOCUMENTATION "Use Doxygen to create the HTML based API documentation" OFF)
 
 #============================================================================
@@ -21,10 +20,6 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 include_directories(contrib)
-
-if(SINGLE_THREADED)
-	add_definitions(-DSINGLE_THREADED)
-endif()
 
 if(MSVC)
 	# Force to always compile with W4

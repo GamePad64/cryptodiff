@@ -204,7 +204,7 @@ void FileMap::fill_with_map(File& datafile, empty_block_t unassigned_space) {
 
 #ifndef SINGLE_THREADED
 	// Threaded initialization
-	for(auto threadnum = 0; threadnum < (std::thread::hardware_concurrency() == 0 ? 0 : std::thread::hardware_concurrency()-1); threadnum++){
+	for(unsigned int threadnum = 0; threadnum < (std::thread::hardware_concurrency() == 0 ? 0 : std::thread::hardware_concurrency()-1); threadnum++){
 		threads.emplace_back(std::bind(static_cast<size_t (boost::asio::io_service::*) ()>(&boost::asio::io_service::run), &io_service));
 	}
 #endif // SINGLE_THREADED
