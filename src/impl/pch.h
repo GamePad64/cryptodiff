@@ -68,6 +68,7 @@
 #include <ctime>
 #include <fstream>
 #include <functional>
+#include <future>
 #include <iomanip>
 #include <iostream>
 #include <list>

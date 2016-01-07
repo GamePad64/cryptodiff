@@ -175,32 +175,22 @@ void FileMap::create_neighbormap(File& datafile,
 void FileMap::fill_with_map(File& datafile, block_type unassigned_space) {
 	if(unassigned_space.second == 0) return;
 
-	boost::asio::io_service io_service;
-	auto work = new boost::asio::io_service::work(io_service);
+	std::vector<std::shared_ptr<std::packaged_task<void()>>> tasks;
 
-	std::vector<std::thread> threads;
-
-#ifndef SINGLE_THREADED
-	// Threaded initialization
-	for(unsigned int threadnum = 0; threadnum < (std::thread::hardware_concurrency() == 0 ? 0 : std::thread::hardware_concurrency()-1); threadnum++){
-		threads.emplace_back(std::bind(static_cast<size_t (boost::asio::io_service::*) ()>(&boost::asio::io_service::run), &io_service));
-	}
-#endif // SINGLE_THREADED
-
-	int block_count = 0;
 	while(unassigned_space.second != 0){
 		size_t bytes_to_read = std::min(unassigned_space.second, (uint64_t)maxblocksize_);
-		io_service.post(std::bind(&FileMap::create_block, this, std::ref(datafile), block_type{unassigned_space.first, bytes_to_read}, ++block_count));
+		tasks.emplace_back(
+			std::make_shared<std::packaged_task<void()>>(
+				std::bind(&FileMap::create_block, this, std::ref(datafile), block_type{unassigned_space.first, bytes_to_read}, tasks.size())
+			)
+		);
+		io_service_ptr->post(std::bind(&std::packaged_task<void()>::operator(), tasks.back()));
 		unassigned_space.first += bytes_to_read;
 		unassigned_space.second -= bytes_to_read;
 	}
 
-	delete work;
-
-	io_service.run();
-
-	for(auto& thread : threads){
-		if(thread.joinable()) thread.join();
+	for(auto& task : tasks){
+		task->get_future().wait();
 	}
 }
 

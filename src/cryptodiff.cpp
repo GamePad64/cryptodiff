@@ -15,7 +15,6 @@
  */
 #include "impl/EncFileMap.h"
 #include "impl/FileMap.h"
-#include "cryptodiff.h"
 
 namespace cryptodiff {
 
