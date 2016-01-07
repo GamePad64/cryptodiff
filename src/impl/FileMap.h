@@ -16,7 +16,9 @@
 #pragma once
 
 #include "EncFileMap.h"
-#include "File.h"
+#include "util/File.h"
+#include "util/AvailabilityMap.h"
+#include "crypto/StatefulRsyncChecksum.h"
 
 namespace cryptodiff {
 namespace internals {
@@ -32,21 +34,21 @@ public:
 	void set_blocks(const std::vector<Block>& new_blocks);
 
 protected:
-	using empty_block_t = std::pair<offset_t, uint32_t>;    // offset, length.
+	using block_type = AvailabilityMap<offset_t>::block_type;    // offset, length.
+	using weakhash_map = std::unordered_multimap<weakhash_t, std::shared_ptr<DecryptedBlock>>;
 
-	std::unordered_multimap<weakhash_t, std::shared_ptr<DecryptedBlock>> hashed_blocks_;
-
+	weakhash_map hashed_blocks_;
 	blob key_;
 
 	// Subroutines for creating block signature
 	DecryptedBlock process_block(const std::vector<uint8_t>& data);
 
-	std::shared_ptr<DecryptedBlock> create_block(File& datafile, empty_block_t unassigned_space, int num = 0);
-	void fill_with_map(File& datafile, empty_block_t unassigned_space);
-	void create_neighbormap(File& datafile, std::shared_ptr<DecryptedBlock> left, std::shared_ptr<DecryptedBlock> right, empty_block_t unassigned_space);
+	std::shared_ptr<DecryptedBlock> create_block(File& datafile, block_type unassigned_space, int num = 0);
+	void fill_with_map(File& datafile, block_type unassigned_space);
+	void create_neighbormap(File& datafile, std::shared_ptr<DecryptedBlock> left, std::shared_ptr<DecryptedBlock> right, block_type unassigned_space);
 
 	// Subroutine for matching blockbuf with defined checksum and existing block signature from blockset.
-	decltype(hashed_blocks_)::iterator match_block(const blob& datablock, decltype(hashed_blocks_)& blockset, weakhash_t checksum);
+	weakhash_map::iterator match_block(const StatefulRsyncChecksum& checksum, weakhash_map& blockset);
 
 	void log_matched(weakhash_t checksum, size_t size);
 	void log_unmatched(offset_t offset, uint32_t size);

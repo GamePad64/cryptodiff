@@ -15,9 +15,6 @@
  */
 #include "FileMap.h"
 
-#include "crypto/RsyncChecksum.h"
-#include "crypto/StatefulRsyncChecksum.h"
-
 namespace cryptodiff {
 namespace internals {
 
@@ -58,66 +55,47 @@ FileMap FileMap::update(const std::string& path) {
 	};
 	std::set<uint32_t, greater_pow2_prio> block_sizes; for(auto block : offset_blocks_){block_sizes.insert(block.second->enc_block_.blocksize_);}
 
-	//
-	std::list<empty_block_t> empty_blocks;  // contains empty_block_t's
-	empty_blocks.push_back(empty_block_t(0, upd.size_));
+	AvailabilityMap<offset_t> av_map(upd.size_);
 
+	// Step 1: Try to match file to blocks we have. Block is matched by weakhash, and then by stronghash
 	for(auto blocksize : block_sizes){
-		for(auto empty_block_it = empty_blocks.begin(); empty_block_it != empty_blocks.end(); ){
+		for(auto empty_block_it = av_map.begin(); empty_block_it != av_map.end(); ){
 			if(empty_block_it->second < blocksize) {empty_block_it++; continue;}
 
-			offset_t offset = empty_block_it->first;
-			std::vector<uint8_t> blockbuf = datafile.get(offset, blocksize);
+			const offset_t orig_offset = empty_block_it->first;
 
-			StatefulRsyncChecksum checksum(blockbuf.begin(), blockbuf.end());
+			// Reading to block buffer
+			std::vector<uint8_t> tmp_blockbuf = datafile.get(orig_offset, blocksize);
+			StatefulRsyncChecksum checksum(tmp_blockbuf.begin(), tmp_blockbuf.end());
+			tmp_blockbuf.clear();
 
-			decltype(hashed_blocks_)::iterator matched_it;
-			do {
-				matched_it = match_block(blockbuf, blocks_left, checksum);
-				if(matched_it != blocks_left.end()){
-					upd.offset_blocks_.insert(std::make_pair(offset, matched_it->second));
-					upd.hashed_blocks_.insert(std::make_pair((weakhash_t)checksum, matched_it->second));
-					if(offset == empty_block_it->first && blocksize == empty_block_it->second){     // Matched block fits perfectly in empty block
-						empty_blocks.erase(empty_block_it++);
-					}else if(offset == empty_block_it->first){      // Matched block is in the beginning of empty block
-						empty_block_it->first += blocksize;
-						empty_block_it->second -= blocksize;
-					}else if(offset+blocksize == empty_block_it->first+empty_block_it->second){     // Matched block is in the end of empty block
-						empty_block_it->second -= blocksize;
-						empty_block_it++;
-					}else{  // Matched block is in the middle of empty block
-						auto prev_length = empty_block_it->second; auto next_it = empty_block_it;
-						empty_block_it->second = offset-empty_block_it->first;
-						empty_blocks.insert(++next_it, empty_block_t(offset+blocksize, empty_block_it->first+prev_length));
-						empty_block_it++;
-					}
+			bool incremented_empty_block_it = false;
+			for(offset_t current_offset = orig_offset; current_offset+blocksize < orig_offset+empty_block_it->second; current_offset++) {
+				auto matched_it = match_block(checksum, blocks_left);
+				if(matched_it != blocks_left.end()) {   // Block matched successfully
+					log_matched(checksum, blocksize);
+
+					empty_block_it = av_map.insert({current_offset, blocksize}).first;
+					incremented_empty_block_it = true;
 					blocks_left.erase(matched_it);
 					break;
 				}
-				if(offset != empty_block_it->first+empty_block_it->second){
-					checksum.roll(datafile.get(++offset));
-				}else break;
-			}while(true);
-			if(matched_it == blocks_left.end()){
-				empty_block_it++;
+				checksum.roll(datafile.get(++current_offset));
 			}
+			if(!incremented_empty_block_it) empty_block_it++;
 		}
 	}
 
-	for(auto empty_block_it = empty_blocks.begin(); empty_block_it != empty_blocks.end(); empty_block_it++){
-		log_unmatched(empty_block_it->first, empty_block_it->second);
+	// Step 2: Unmatched blocks will be added to filemap
+	for(auto empty_block : av_map){
+		log_unmatched(empty_block.first, empty_block.second);
 
-		auto lb_block = upd.offset_blocks_.lower_bound(empty_block_it->first);
+		auto lb_block = upd.offset_blocks_.lower_bound(empty_block.first);
 		std::shared_ptr<DecryptedBlock> left_blk, right_blk;
-		if(lb_block != upd.offset_blocks_.end()){
-			right_blk = lb_block->second;
-		}
-		if(lb_block != upd.offset_blocks_.begin()){
-			--lb_block;
-			left_blk = lb_block->second;
-		}
+		if(lb_block != upd.offset_blocks_.end())    right_blk = lb_block->second;
+		if(lb_block != upd.offset_blocks_.begin())  left_blk = (--lb_block)->second;
 
-		upd.create_neighbormap(datafile, left_blk, right_blk, *empty_block_it);
+		upd.create_neighbormap(datafile, left_blk, right_blk, empty_block);
 	}
 
 	return upd;
@@ -142,14 +120,14 @@ DecryptedBlock FileMap::process_block(const std::vector<uint8_t>& data) {
 	return block;
 }
 
-decltype(FileMap::hashed_blocks_)::iterator FileMap::match_block(const blob& datablock, decltype(hashed_blocks_)& blockset, weakhash_t checksum) {
+FileMap::weakhash_map::iterator FileMap::match_block(const StatefulRsyncChecksum& checksum, weakhash_map& blockset) {
 	auto eqhash_blocks = blockset.equal_range(checksum);
 
 	if(eqhash_blocks.first != eqhash_blocks.second){
+		blob datablock = blob(checksum.state_buffer().begin(), checksum.state_buffer().end());
 		blob strong_hash = compute_strong_hash(datablock, strong_hash_type_);
 		for(auto eqhash_block = eqhash_blocks.first; eqhash_block != eqhash_blocks.second; eqhash_block++){
 			if(strong_hash == eqhash_block->second->strong_hash_){
-				log_matched(checksum, datablock.size());
 				return eqhash_block;
 			}
 		}
@@ -166,7 +144,7 @@ void FileMap::set_blocks(const std::vector<Block>& new_blocks) {
 	}
 }
 
-std::shared_ptr<DecryptedBlock> FileMap::create_block(File& datafile, empty_block_t unassigned_space, int num){
+std::shared_ptr<DecryptedBlock> FileMap::create_block(File& datafile, block_type unassigned_space, int num){
 	std::shared_ptr<DecryptedBlock> processed_block = std::make_shared<DecryptedBlock>(process_block(datafile.get(unassigned_space.first, unassigned_space.second)));
 
 	print_debug_block(*processed_block, num);
@@ -178,7 +156,7 @@ std::shared_ptr<DecryptedBlock> FileMap::create_block(File& datafile, empty_bloc
 
 void FileMap::create_neighbormap(File& datafile,
 		std::shared_ptr<DecryptedBlock> left, std::shared_ptr<DecryptedBlock> right,
-		empty_block_t unassigned_space) {
+		block_type unassigned_space) {
 	if(!right && !left){
 		fill_with_map(datafile, unassigned_space);
 	}else if(!right){	// Append in the end.
@@ -194,7 +172,7 @@ void FileMap::create_neighbormap(File& datafile,
 	}
 }
 
-void FileMap::fill_with_map(File& datafile, empty_block_t unassigned_space) {
+void FileMap::fill_with_map(File& datafile, block_type unassigned_space) {
 	if(unassigned_space.second == 0) return;
 
 	boost::asio::io_service io_service;
@@ -211,8 +189,8 @@ void FileMap::fill_with_map(File& datafile, empty_block_t unassigned_space) {
 
 	int block_count = 0;
 	while(unassigned_space.second != 0){
-		size_t bytes_to_read = std::min(unassigned_space.second, maxblocksize_);
-		io_service.post(std::bind(&FileMap::create_block, this, std::ref(datafile), empty_block_t{unassigned_space.first, bytes_to_read}, ++block_count));
+		size_t bytes_to_read = std::min(unassigned_space.second, (uint64_t)maxblocksize_);
+		io_service.post(std::bind(&FileMap::create_block, this, std::ref(datafile), block_type{unassigned_space.first, bytes_to_read}, ++block_count));
 		unassigned_space.first += bytes_to_read;
 		unassigned_space.second -= bytes_to_read;
 	}

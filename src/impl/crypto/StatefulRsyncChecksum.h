@@ -19,14 +19,14 @@
 #include <boost/circular_buffer.hpp>
 
 class StatefulRsyncChecksum {
-	RsyncChecksum checksum;
-	boost::circular_buffer<uint8_t> state_buffer;
+	RsyncChecksum checksum_;
+	boost::circular_buffer<uint8_t> state_buffer_;
 public:
 	StatefulRsyncChecksum() {}
 	template<class InputIterator> StatefulRsyncChecksum(InputIterator first, InputIterator last) : StatefulRsyncChecksum(){compute(first, last);}
 
-	operator weakhash_t() const {return checksum;}
-	operator RsyncChecksum() const {return checksum;};
+	operator weakhash_t() const {return checksum_;}
+	operator RsyncChecksum() const {return checksum_;};
 
 	/**
 	 * Computation itself. Based on work of Donovan Baarda <abo@minkirri.apana.org.au>. Code modified from librsync.
@@ -35,13 +35,15 @@ public:
 	 * @return
 	 */
 	template<class InputIterator> weakhash_t compute(InputIterator first, InputIterator last){
-		state_buffer.assign(first, last);
-		return checksum.compute(first, last);
+		state_buffer_.assign(first, last);
+		return checksum_.compute(first, last);
 	}
 
 	weakhash_t roll(uint8_t in){
-		uint8_t front = state_buffer.front();
-		state_buffer.push_back(in);
-		return checksum.roll(front, in);
+		uint8_t front = state_buffer_.front();
+		state_buffer_.push_back(in);
+		return checksum_.roll(front, in);
 	}
+
+	const boost::circular_buffer<uint8_t>& state_buffer() const {return state_buffer_;}
 };
