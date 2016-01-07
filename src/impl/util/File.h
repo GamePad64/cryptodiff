@@ -52,7 +52,7 @@ public:
 	}
 	uint8_t get(uint64_t offset) {
 		std::lock_guard<std::mutex> lk(mutex_);
-		ifs_.seekg(offset);
+		ifs_.seekg(offset); // FIXME: major performance issue, slow seekg.
 
 		return ifs_.get();
 	}

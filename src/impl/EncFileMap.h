@@ -24,12 +24,15 @@ namespace internals {
 extern std::shared_ptr<spdlog::logger> logger;
 inline void set_logger(std::shared_ptr<spdlog::logger> new_logger) {logger = new_logger;}
 
-extern std::shared_ptr<boost::asio::io_service> io_service_ptr;
+extern boost::asio::io_service* io_service_ptr;
 extern std::unique_ptr<boost::asio::io_service::work> io_service_work;
+extern bool internal_ios;
 extern std::thread io_service_thread;
-inline void set_io_service(std::shared_ptr<boost::asio::io_service> new_io_service) {
+inline void set_io_service(boost::asio::io_service& new_io_service) {
+	if(internal_ios) delete io_service_ptr;
 	io_service_work.reset();
-	io_service_ptr = new_io_service;
+	io_service_ptr = &new_io_service;
+	internal_ios = false;
 }
 
 struct DecryptedBlock {

@@ -50,7 +50,7 @@ enum WeakHashType : uint8_t {RSYNC=0/*, RSYNC64=1*/};
 enum StrongHashType : uint8_t {SHA3_224=0, SHA2_224=1};
 
 void CRYPTODIFF_EXPORTED set_logger(std::shared_ptr<spdlog::logger> logger);
-void CRYPTODIFF_EXPORTED set_io_service(std::shared_ptr<boost::asio::io_service> io_service_ptr);
+void CRYPTODIFF_EXPORTED set_io_service(boost::asio::io_service& io_service);
 
 std::vector<uint8_t> CRYPTODIFF_EXPORTED encrypt_block(const std::vector<uint8_t>& datablock, const std::vector<uint8_t>& key, const std::vector<uint8_t>& iv);
 std::vector<uint8_t> CRYPTODIFF_EXPORTED decrypt_block(const std::vector<uint8_t>& datablock, uint32_t blocksize, const std::vector<uint8_t>& key, const std::vector<uint8_t>& iv);
