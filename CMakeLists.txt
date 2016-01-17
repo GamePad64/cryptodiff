@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.2)
-project(cryptodiff VERSION 0.9.0)
+project(cryptodiff VERSION 0.9.1)
 
 include(GNUInstallDirs)
 
@@ -80,14 +80,14 @@ endif()
 
 # WinSock
 if(WIN32)
-	target_link_libraries(cryptodiff-static ws2_32)
-	target_link_libraries(cryptodiff-shared ws2_32)
+	target_link_libraries(cryptodiff-static PRIVATE ws2_32)
+	target_link_libraries(cryptodiff-shared PRIVATE ws2_32)
 endif()
 
 # Threads
 find_package(Threads)
-target_link_libraries(cryptodiff-static ${CMAKE_THREAD_LIBS_INIT})
-target_link_libraries(cryptodiff-shared ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(cryptodiff-static PRIVATE ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(cryptodiff-shared PRIVATE ${CMAKE_THREAD_LIBS_INIT})
 
 # Boost
 set(Boost_COMPONENTS
@@ -98,7 +98,7 @@ set(Boost_USE_MULTITHREADED ON)
 
 # shared executable
 find_package(Boost COMPONENTS ${Boost_COMPONENTS} REQUIRED)
-target_link_libraries(cryptodiff-shared ${Boost_LIBRARIES})
+target_link_libraries(cryptodiff-shared PRIVATE ${Boost_LIBRARIES})
 target_include_directories(cryptodiff-shared PRIVATE ${Boost_INCLUDE_DIRS})
 message(STATUS "Boost shared libraries: ${Boost_LIBRARIES}")
 
@@ -108,7 +108,7 @@ set(Boost_USE_STATIC_LIBS ON)
 
 # static executable
 find_package(Boost COMPONENTS ${Boost_COMPONENTS} REQUIRED)
-target_link_libraries(cryptodiff-static ${Boost_LIBRARIES})
+target_link_libraries(cryptodiff-static PRIVATE ${Boost_LIBRARIES})
 target_include_directories(cryptodiff-static PRIVATE ${Boost_INCLUDE_DIRS})
 message(STATUS "Boost static libraries: ${Boost_LIBRARIES}")
 # /Boost
@@ -116,8 +116,8 @@ message(STATUS "Boost static libraries: ${Boost_LIBRARIES}")
 # CryptoPP
 find_package(CryptoPP REQUIRED)
 
-target_link_libraries(cryptodiff-static cryptopp-static)
-target_link_libraries(cryptodiff-shared cryptopp-shared)
+target_link_libraries(cryptodiff-static PRIVATE cryptopp-static)
+target_link_libraries(cryptodiff-shared PRIVATE cryptopp-shared)
 # /CryptoPP
 
 #============================================================================

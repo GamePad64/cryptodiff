@@ -177,6 +177,8 @@ void FileMap::fill_with_map(File& datafile, block_type unassigned_space) {
 
 	std::vector<std::shared_ptr<std::packaged_task<void()>>> tasks;
 
+	io_service io_service_instance; // FIXME: Warning! Temporary code.
+
 	while(unassigned_space.second != 0){
 		size_t bytes_to_read = std::min(unassigned_space.second, (uint64_t)maxblocksize_);
 		tasks.emplace_back(
@@ -184,10 +186,12 @@ void FileMap::fill_with_map(File& datafile, block_type unassigned_space) {
 				std::bind(&FileMap::create_block, this, std::ref(datafile), block_type{unassigned_space.first, bytes_to_read}, tasks.size())
 			)
 		);
-		io_service_ptr->post(std::bind(&std::packaged_task<void()>::operator(), tasks.back()));
+		io_service_instance.post(std::bind(&std::packaged_task<void()>::operator(), tasks.back()));
 		unassigned_space.first += bytes_to_read;
 		unassigned_space.second -= bytes_to_read;
 	}
+
+	io_service_instance.run();
 
 	for(auto& task : tasks){
 		task->get_future().wait();
